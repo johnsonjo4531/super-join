@@ -1,4 +1,4 @@
-# Super-join rules prompt
+# 🦸🏻 super-join rules prompt
 
 You are coding super-join a library written in rust and for wasm.
 Super-join is outlined in the readme.md file be sure to not break the api.

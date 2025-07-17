@@ -1,0 +1,40 @@
+{
+  "name": "super-join",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "super-join is a wasm library for turning your graphql queries into SQL queries which solves the n+1 problem",
+  "main": "dist/index.js",
+  "scripts": {
+    "pretest": "npm run build",
+    "test": "ava ./src-js/**/*.test.ts",
+    "build": "tsc"
+  },
+  "keywords": [
+    "sql",
+    "join",
+    "sql-join",
+    "graphql",
+    "query",
+    "batch",
+    "data"
+  ],
+  "author": "John Johnson",
+  "license": "MIT",
+  "devDependencies": {
+    "@ava/typescript": "^6.0.0",
+    "ava": "^6.4.1",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "graphql": "^16.11.0"
+  },
+  "ava": {
+    "typescript": {
+      "rewritePaths": {
+        "src-js/": "dist/"
+      },
+      "compile": false
+    }
+  }
+}

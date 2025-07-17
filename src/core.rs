@@ -6,8 +6,19 @@ use wasm_bindgen::prelude::*;
 
 #[derive(Deserialize, Debug)]
 pub struct SchemaMetadata {
-    pub root_type: String,
-    pub types: HashMap<String, HashMap<String, FieldMetadata>>,
+    pub types: Types,
+}
+
+type Types = HashMap<String, Fields>;
+
+#[derive(Deserialize, Debug)]
+pub struct Fields {
+    /// The GraphQL Field Name!!
+    field_name: String,
+    /// The SQL table name
+    table: String,
+    /// Metadata about how to fetch the fields from SQL
+    fields: HashMap<String, FieldMetadata>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -19,8 +30,8 @@ pub struct FieldMetadata {
 #[derive(Deserialize, Debug)]
 pub struct JoinInfo {
     pub table: String,
-    pub on_condition: String,
-    pub target_type: String, // e.g., "Post" or "Comment"
+    pub on_clause: String,
+    pub root_type: String, // e.g., "Post" or "Comment"
 }
 
 #[derive(Debug, Serialize)]
@@ -44,8 +55,12 @@ pub struct SqlSelect {
     pub joins: Vec<SqlJoin>,
 }
 
+pub fn parse_gql(resolve_info: &str) -> Result<Document<&str>, String> {
+    parse_query(resolve_info).map_err(|e| e.to_string())
+}
+
 pub fn build_sql_query(resolve_info: &str, metadata_json: &str) -> Result<String, String> {
-    let doc: Document<&str> = parse_query(resolve_info).map_err(|e| e.to_string())?;
+    let doc = parse_gql(resolve_info)?;
     let metadata: SchemaMetadata =
         serde_json::from_str(metadata_json).map_err(|e| e.to_string())?;
 
@@ -53,9 +68,17 @@ pub fn build_sql_query(resolve_info: &str, metadata_json: &str) -> Result<String
         if let Definition::Operation(op) = selection {
             if let OperationDefinition::SelectionSet(selection_set) = op {
                 if let Some(Selection::Field(root_field)) = selection_set.items.first() {
-                    let sql_ast = build_sql_ast(&metadata.root_type, root_field, &metadata);
-                    let sql = render_sql(&sql_ast, None);
-                    return Ok(sql);
+                    let root_field_name = root_field.name;
+                    let root_type = metadata
+                        .types
+                        .iter()
+                        .find(|(_, type_meta)| type_meta.field_name == root_field_name)
+                        .map(|(ty, _)| ty.clone());
+                    if let Some(root_type) = root_type {
+                        let sql_ast = build_sql_ast(root_type, root_field, &metadata)?;
+                        let sql = render_sql(&sql_ast, None);
+                        return Ok(sql);
+                    }
                 }
             }
         }
@@ -93,17 +116,18 @@ fn render_sql(select: &SqlSelect, alias: Option<&str>) -> String {
 }
 
 fn build_sql_ast<'a>(
-    gql_type: &str,
+    root_type: String,
     field: &Field<'a, &'a str>,
     metadata: &SchemaMetadata,
-) -> SqlSelect {
+) -> Result<SqlSelect, String> {
     let mut columns = vec![];
     let mut joins = vec![];
+    let types = &metadata.types;
 
-    if let Some(fields) = metadata.types.get(gql_type) {
+    if let Some(inner_types) = types.get(&root_type) {
         for sel in &field.selection_set.items {
             if let Selection::Field(subfield) = sel {
-                if let Some(field_meta) = fields.get(subfield.name) {
+                if let Some(field_meta) = inner_types.fields.get(subfield.name) {
                     if let Some(column) = &field_meta.column {
                         columns.push(SqlColumn {
                             name: column.clone(),
@@ -111,10 +135,10 @@ fn build_sql_ast<'a>(
                         });
                     } else if let Some(join_info) = &field_meta.join {
                         let join_sql_ast =
-                            build_sql_ast(&join_info.target_type, subfield, metadata);
+                            build_sql_ast(join_info.root_type.clone(), subfield, &metadata)?;
                         joins.push(SqlJoin {
                             table: join_info.table.clone(),
-                            on: join_info.on_condition.clone(),
+                            on: join_info.on_clause.clone(),
                             columns: join_sql_ast.columns,
                             joins: join_sql_ast.joins,
                         });
@@ -122,12 +146,14 @@ fn build_sql_ast<'a>(
                 }
             }
         }
-    }
 
-    SqlSelect {
-        table: "users".into(),
-        columns,
-        joins,
+        Ok(SqlSelect {
+            table: String::from(&inner_types.table),
+            columns,
+            joins,
+        })
+    } else {
+        Err(format!("Type {} does not exist on Root", root_type))
     }
 }
 

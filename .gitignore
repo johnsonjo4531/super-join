@@ -1,3 +1,6 @@
 /target
 /external-docs
 /external-repos
+/dist
+/node_modules
+/pkg

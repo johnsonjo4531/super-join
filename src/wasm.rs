@@ -1,8 +1,3 @@
-use graphql_parser::parse_query;
-use graphql_parser::query::{Definition, Document, Field, OperationDefinition, Selection};
-use serde::{Deserialize, Serialize};
-use serde_wasm_bindgen::{from_value as from_js, to_value as to_js};
-use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

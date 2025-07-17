@@ -1,5 +1,5 @@
 go:
-	cargo test
+	wasm-pack build --target web && npm i && npm run test && cargo test
 
 # One time setup
 # Stuff that only needs to be run once
