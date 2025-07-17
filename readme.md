@@ -1,8 +1,10 @@
 # 🦸🏻 super-join
 
+⚠️ SUPER-JOIN is a work in progress!!
+
 > ⚠️ super-join is alpha level software (if not even just a prototype at this point) if you aren't afraid of things changing out from under you without any form of notifying (for the time being) feel free to try it otherwise beware!
 
-Super-join is a wasm library for turning your graphql queries into SQL queries which solves the n+1 problem with graphql queries.
+super-join is a wasm library for turning your graphql queries into SQL queries which solves the n+1 problem.
 
 The goal of this library is to take a graphql query AST along with super-join's intermediate metadata format capable of turning the graphql query AST and super-join's intermediate AST (which will generally be created from a graphql service/server AST, but could come from elsewhere) into a SQL ast that can then be turned into a SQL query of type string. That sql query can then be ran outside this library using a SQL driver for the language at hand then its result can be sent back into this library to finally be hydrated (shaped) to the form of the graphql query.
 
