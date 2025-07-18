@@ -4,7 +4,7 @@ import {
   OperationTypeNode,
   print,
 } from "graphql";
-import { build_sql_query } from "../pkg/super_join_bg.wasm.js";
+import { build_sql_query } from "../pkg/super_join.js";
 
 export function extractSubQuery(info: GraphQLResolveInfo): string {
   const fieldNode = info.fieldNodes[0];
