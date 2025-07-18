@@ -1,11 +1,10 @@
-import test from "ava";
+const { test } = Deno;
+import { expect } from "jsr:@std/expect";
 import { buildSqlQuery } from "../index.js";
 import { graphql } from "graphql";
-// TODO see how fast join-monster is :D
-import joinMonster from "join-monster";
 
-test("runtime", (t) => {
-  console.time("First run");
+test("runtime", async (t) => {
+  console.time("First run of buildSqlQuery");
   const sql = buildSqlQuery(`{posts { title author  } }`, {
     types: {
       // User: {
@@ -33,9 +32,9 @@ test("runtime", (t) => {
       },
     },
   });
-  console.timeEnd("First run");
+  console.timeEnd("First run of buildSqlQuery");
 
-  console.time("100 passes of buildSqlQuery");
+  console.time("Next 100 passes of buildSqlQuery");
   for (const i of new Array(100)) {
     const sql2 = buildSqlQuery(`{ user { posts { title author  } } }`, {
       types: {
@@ -65,8 +64,8 @@ test("runtime", (t) => {
       },
     });
   }
-  console.timeEnd("100 passes of buildSqlQuery");
-  t.pass();
+  console.timeEnd("Next 100 passes of buildSqlQuery");
+  expect(true).toBe(true);
 });
 
 test("posts", async (t) => {
@@ -104,8 +103,8 @@ test("posts", async (t) => {
   console.log({ sql });
   // t.assert(sql.includes("users.id"));
   // t.assert(sql.includes("users.name"));
-  t.assert(sql.includes("posts.title"));
-  t.assert(sql.includes("posts.author"));
+  expect(sql.includes("posts.title")).toBe(true);
+  expect(sql.includes("posts.author")).toBe(true);
 });
 
 test("user", async (t) => {
@@ -143,6 +142,6 @@ test("user", async (t) => {
   console.log({ sql });
   // t.assert(sql.includes("users.id"));
   // t.assert(sql.includes("users.name"));
-  t.assert(sql.includes("posts.title"));
-  t.assert(sql.includes("posts.author"));
+  expect(sql.includes("posts.title")).toBe(true);
+  expect(sql.includes("posts.author")).toBe(true);
 });

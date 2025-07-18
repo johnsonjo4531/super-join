@@ -24,7 +24,6 @@
   "devDependencies": {
     "@ava/typescript": "^6.0.0",
     "ava": "^6.4.1",
-    "join-monster": "^4.0.1",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {

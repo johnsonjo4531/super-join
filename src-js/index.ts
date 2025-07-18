@@ -28,4 +28,6 @@ export function extractSubQuery(info: GraphQLResolveInfo): string {
   return print(doc); // returns: `{ posts { title comments { content } } }`
 }
 
-export const buildSqlQuery = build_sql_query;
+export const buildSqlQuery = (
+  ...params: Parameters<typeof build_sql_query>
+): string => build_sql_query(...params);

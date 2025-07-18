@@ -2,32 +2,41 @@ use graphql_parser::parse_query;
 use graphql_parser::query::{Definition, Document, Field, OperationDefinition, Selection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-#[derive(Deserialize, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
+#[tsify(from_wasm_abi)]
 pub struct SchemaMetadata {
+    #[tsify(type = "Record<string, Fields>")]
     pub types: Types,
 }
 
 type Types = HashMap<String, Fields>;
 
-#[derive(Deserialize, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
+#[tsify(from_wasm_abi)]
 pub struct Fields {
     /// The GraphQL Field Name!!
-    field_name: String,
+    pub field_name: String,
     /// The SQL table name
-    table: String,
+    pub table: String,
     /// Metadata about how to fetch the fields from SQL
-    fields: HashMap<String, FieldMetadata>,
+    #[tsify(type = "Record<string, FieldMetadata>")]
+    pub fields: HashMap<String, FieldMetadata>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
+#[tsify(from_wasm_abi)]
 pub struct FieldMetadata {
+    #[tsify(optional)]
     pub column: Option<String>,
+    #[tsify(optional)]
     pub join: Option<JoinInfo>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
+#[tsify(from_wasm_abi)]
 pub struct JoinInfo {
     pub table: String,
     pub on_clause: String,
@@ -59,10 +68,8 @@ pub fn parse_gql(resolve_info: &str) -> Result<Document<&str>, String> {
     parse_query(resolve_info).map_err(|e| e.to_string())
 }
 
-pub fn build_sql_query(resolve_info: &str, metadata_json: &str) -> Result<String, String> {
-    let doc = parse_gql(resolve_info)?;
-    let metadata: SchemaMetadata =
-        serde_json::from_str(metadata_json).map_err(|e| e.to_string())?;
+pub fn build_sql_query(query: &str, metadata: SchemaMetadata) -> Result<String, String> {
+    let doc = parse_gql(query)?;
 
     if let Some(selection) = doc.definitions.first() {
         if let Definition::Operation(op) = selection {
