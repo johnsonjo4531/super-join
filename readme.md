@@ -1,6 +1,6 @@
 # 🦸🏻 super-join
 
-⚠️ SUPER-JOIN is a VERY EARLY work in progress and currently a PROTOTYPE!! Please don't expect much from this projec yet!
+⚠️ SUPER-JOIN is a VERY EARLY work in progress and currently a PROTOTYPE!! Please don't expect much from this project yet!
 
 > ⚠️ super-join is alpha level software (if not even just a prototype at this point) if you aren't afraid of things changing out from under you without any form of notifying (for the time being) feel free to try it otherwise beware!
 
