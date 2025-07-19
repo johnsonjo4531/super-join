@@ -4,7 +4,8 @@ import {
   OperationTypeNode,
   print,
 } from "graphql";
-import { build_sql_query } from "../pkg/super_join.js";
+export type * from "../pkg/super_join.js";
+export * from "../pkg/super_join.js";
 
 export function extractSubQuery(info: GraphQLResolveInfo): string {
   const fieldNode = info.fieldNodes[0];
@@ -27,7 +28,3 @@ export function extractSubQuery(info: GraphQLResolveInfo): string {
 
   return print(doc); // returns: `{ posts { title comments { content } } }`
 }
-
-export const buildSqlQuery = (
-  ...params: Parameters<typeof build_sql_query>
-): string => build_sql_query(...params);

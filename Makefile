@@ -1,5 +1,8 @@
 go:
-	wasm-pack build --release --target nodejs && npm i && time npm run test && cargo test
+	 cargo test
+
+node:
+	wasm-pack build --release --target nodejs && npm i && npm run test
 
 deno:
 	wasm-pack build --release --target deno && deno test --allow-env --allow-read --unstable-sloppy-imports ./src-js/__deno__/**/*.test.ts

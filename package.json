@@ -7,7 +7,7 @@
   "main": "dist/index.js",
   "scripts": {
     "pretest": "npm run build",
-    "test": "ava ./src-js/**/*.test.ts",
+    "test": "ava ./src-js/__specs__/*.test.ts",
     "build": "tsc"
   },
   "keywords": [

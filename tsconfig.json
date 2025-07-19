@@ -8,5 +8,6 @@
     "skipLibCheck": true,
     "outDir": "dist"
   },
-  "include": ["./src-js/**/*.ts", "./pkg/**/*"]
+  "include": ["./src-js/**/*.ts", "./pkg/**/*"],
+  "exclude": ["./src-js/__deno__/**/*"]
 }
