@@ -42,6 +42,9 @@ export function user(assertContains: (str: string, substring: string) => void) {
   const sql = buildSqlQuery(
     `{ user { posts { title author { name }  } } }`,
     metadata,
+    {
+      builder: "postgres",
+    },
   );
   console.timeEnd("buildSqlQuery");
 

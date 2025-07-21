@@ -20,12 +20,9 @@ function evalTemplate(strings: TemplateStringsArray, ...values: any[]) {
   );
 }
 
-for (const [name, fn] of Object.entries(tests) as [
-  string,
-  (str: string, substring: string) => Promise<void> | void,
-][]) {
+for (const [name, fn] of Object.entries(tests)) {
   test(name, (t) =>
-    fn((string, substring) => {
+    fn((string: string, substring: string) => {
       t.regex(string, str2reg("g")`${substring}`);
     }),
   );

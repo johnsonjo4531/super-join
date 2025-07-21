@@ -9,10 +9,10 @@ pub mod wasm;
 
 #[cfg(test)]
 mod tests {
-
     use crate::core::{
-        FieldMetadata, JoinInfo, SuperJoinExtendsNode, SuperJoinNode, SuperJoinRoot,
-        build_sql_query,
+        fns::build_sql_query,
+        schema::{ExtendsNode, Field, JoinInfo, Node, Root},
+        shared_schema::{Join, JoinType, SqlExpr},
     };
 
     fn assert_contains(string: &str, substring: &str) {
@@ -36,13 +36,13 @@ mod tests {
         pub user: &'a str,
         pub post: &'a str,
         pub post_author: &'a str,
-        pub comment: &'a str,
-        pub comment_author: &'a str,
+        // pub comment: &'a str,
+        // pub comment_author: &'a str,
     }
 
     struct Schema<'a> {
         aliases: Aliases<'a>,
-        schema: SuperJoinRoot,
+        schema: Root,
     }
 
     fn get_schema<'a>() -> Schema<'a> {
@@ -52,16 +52,19 @@ mod tests {
         let comment_alias = "comment_1";
         let comment_author_alias = "user_3";
 
-        let comment = SuperJoinNode {
+        let comment = Node {
             alias: comment_alias.into(),
             field_name: "comments".into(),
             table: "comments".into(),
             fields: hm! {
-                "title" => FieldMetadata::Column("title".into()),
-                "content" => FieldMetadata::Column("content".into()),
-                "author" => FieldMetadata::Join(JoinInfo {
-                        on_clause: format!("\"{}\".author_id = \"{}\".id", comment_alias, comment_author_alias),
-                        extends: SuperJoinExtendsNode {
+                "title" => Field::Column("title".into()),
+                "content" => Field::Column("content".into()),
+                "author" => Field::Join(JoinInfo {
+                        join: Join {
+                            on: SqlExpr::Raw(format!("{}.author_id = {}.id", comment_alias, comment_author_alias).into()),
+                            kind: JoinType::LeftJoin
+                        },
+                        extends: ExtendsNode {
                             extends: user_alias.into(),
                             alias: comment_author_alias.into(),
                             field_name: "author".into(),
@@ -70,15 +73,18 @@ mod tests {
             },
         };
 
-        let post = SuperJoinNode {
+        let post = Node {
             alias: post_alias.into(),
             field_name: "posts".into(),
             table: "posts".into(),
             fields: hm! {
-                "title" => FieldMetadata::Column("title".into()),
-                "author" => FieldMetadata::Join(JoinInfo {
-                        on_clause: format!("\"{}\".author_id = \"{}\".id", post_alias, post_author_alias),
-                        extends: SuperJoinExtendsNode {
+                "title" => Field::Column("title".into()),
+                "author" => Field::Join(JoinInfo {
+                        join: Join {
+                            on: SqlExpr::Raw(format!("\"{}\".author_id = \"{}\".id", post_alias, post_author_alias).into()),
+                            kind: JoinType::LeftJoin
+                        },
+                        extends: ExtendsNode {
                             extends: user_alias.into(),
                             alias: post_author_alias.into(),
                             field_name: "author".into(),
@@ -88,20 +94,24 @@ mod tests {
             },
         };
 
-        let user = SuperJoinNode {
+        let user = Node {
             alias: user_alias.into(),
             field_name: "user".into(),
             table: "users".into(),
             fields: hm! {
-                "id" => FieldMetadata::Column("id".into()),
-                "name" => FieldMetadata::Column("name".into()),
-                "posts" => FieldMetadata::Join(JoinInfo {
-                        on_clause: format!("\"{}\".post_id = \"{}\".id", user_alias, post_alias),
-                        extends: SuperJoinExtendsNode {
+                "id" => Field::Column("id".into()),
+                "name" => Field::Column("name".into()),
+                "posts" => Field::Join(JoinInfo {
+                        join: Join {
+                            on: SqlExpr::Raw(format!("\"{}\".post_id = \"{}\".id", user_alias, post_alias).into()),
+                            kind: JoinType::LeftJoin
+                        },
+                        extends: ExtendsNode {
                             extends: post_alias.into(),
                             alias: post_alias.into(),
                             field_name: "posts".into(),
                         },
+
                 }),
             },
         };
@@ -111,10 +121,10 @@ mod tests {
                 user: user_alias,
                 post: post_alias,
                 post_author: post_author_alias,
-                comment: comment_alias,
-                comment_author: comment_author_alias,
+                // comment: comment_alias,
+                // comment_author: comment_author_alias,
             },
-            schema: SuperJoinRoot::from(vec![user.clone(), post.clone(), comment.clone()]),
+            schema: Root::from(vec![user.clone(), post.clone(), comment.clone()]),
         }
     }
 

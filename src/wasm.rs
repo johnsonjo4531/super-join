@@ -1,14 +1,14 @@
 use wasm_bindgen::prelude::*;
 
-use crate::core::{Options, SuperJoinRoot, SuperJoinRootInput};
+use crate::core::schema::{Options, Root, RootInput};
 
 #[wasm_bindgen(js_name = buildSqlQuery)]
 pub fn build_sql_query(
     query: &str,
-    metadata: SuperJoinRootInput,
+    metadata: RootInput,
     options: Option<Options>,
 ) -> Result<String, JsValue> {
-    match crate::core::build_sql_query(query, SuperJoinRoot::from(metadata.0), options) {
+    match crate::core::fns::build_sql_query(query, Root::from(metadata.0), options) {
         Ok(sql) => Ok(sql),
         Err(err) => Err(JsValue::from_str(&err)),
     }

@@ -6,6 +6,7 @@ import {
 } from "graphql";
 export type * from "../pkg/super_join.js";
 export * from "../pkg/super_join.js";
+import type { ColumnRef, SqlParam, Value } from "../pkg/super_join.js";
 
 export function extractSubQuery(info: GraphQLResolveInfo): string {
   const fieldNode = info.fieldNodes[0];
