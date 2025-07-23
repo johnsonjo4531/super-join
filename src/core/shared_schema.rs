@@ -2,11 +2,14 @@ use sea_query::{Expr, ExprTrait, IntoLikeExpr};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
+use crate::core::join_monster_schema::{FnValue, JoinFn};
+
 #[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
 pub struct ColumnRef {
     pub column: String,
     pub table: Option<String>,
+    pub alias: Option<String>,
 }
 
 impl From<String> for ColumnRef {
@@ -14,6 +17,7 @@ impl From<String> for ColumnRef {
         ColumnRef {
             column,
             table: None,
+            alias: None,
         }
     }
 }
@@ -29,7 +33,7 @@ pub struct SqlParam {
 #[tsify(from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SqlValue {
-    Int(Value<Option<i32>>),
+    Int(Value<Option<i64>>),
     Float(Value<Option<f64>>),
     Text(Value<Option<String>>),
     Bool(Value<Option<bool>>),
@@ -51,7 +55,7 @@ impl<T> From<T> for Value<T> {
 impl From<&SqlValue> for sea_query::Value {
     fn from(v: &SqlValue) -> sea_query::Value {
         match v {
-            SqlValue::Int(i) => sea_query::Value::Int(i.value.clone()), // or Int64 if needed
+            SqlValue::Int(i) => sea_query::Value::BigInt(i.value.clone()), // or Int64 if needed
             SqlValue::Float(f) => sea_query::Value::Double(f.value.clone()),
             SqlValue::Text(s) => sea_query::Value::String(match s.value.clone() {
                 Some(s) => Some(Box::new(s)),
@@ -87,6 +91,22 @@ pub struct InExpr {
 #[tsify(from_wasm_abi)]
 pub struct NotExpr {
     pub expr: Box<SqlExpr>,
+}
+
+#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
+#[tsify(from_wasm_abi)]
+#[serde(tag = "kind")]
+pub enum Column {
+    Expr(WithAlias<SqlExpr>),
+    Data(ColumnRef),
+}
+
+#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
+#[tsify(from_wasm_abi)]
+#[serde(tag = "kind")]
+pub struct WithAlias<T> {
+    pub alias: Option<String>,
+    pub data: T,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
@@ -313,9 +333,30 @@ impl From<&JoinType> for sea_query::JoinType {
     }
 }
 
+#[derive(Tsify, Deserialize, Serialize, Debug)]
+#[tsify(from_wasm_abi)]
+pub enum JoinExpr {
+    Fn(FnValue<JoinFn, String>),
+    Join(Join),
+}
+
 #[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
 pub struct Join {
     pub on: SqlExpr,
     pub kind: JoinType,
+}
+
+#[derive(Debug)]
+pub enum IRParseError {
+    MissingNamedType,
+    MissingExtension,
+    ExpectedStringValue,
+    ObjectExtensionExpected,
+    FieldExtensionExpected,
+    FnValueExpected,
+    InvalidJoinExpr(String),
+    TypeNotFound(String),
+    MissingField(String),
+    UnexpectedType(String),
 }

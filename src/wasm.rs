@@ -7,8 +7,9 @@ pub fn build_sql_query(
     query: &str,
     metadata: RootInput,
     options: Option<Options>,
+    context: JsValue,
 ) -> Result<String, JsValue> {
-    match crate::core::fns::build_sql_query(query, Root::from(metadata.0), options) {
+    match crate::core::to_sql::build_sql_query(query, Root::from(metadata.0), options, context) {
         Ok(sql) => Ok(sql),
         Err(err) => Err(JsValue::from_str(&err)),
     }

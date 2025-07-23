@@ -4,15 +4,17 @@
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 // - MIT license (https://opensource.org/licenses/MIT)
 // at your option.
-mod core;
+pub mod core;
 pub mod wasm;
 
 #[cfg(test)]
 mod tests {
+    use wasm_bindgen::JsValue;
+
     use crate::core::{
-        fns::build_sql_query,
         schema::{ExtendsNode, Field, JoinInfo, Node, Root},
-        shared_schema::{Join, JoinType, SqlExpr},
+        shared_schema::{Column, ColumnRef, Join, JoinExpr, JoinType, SqlExpr},
+        to_sql::build_sql_query,
     };
 
     fn assert_contains(string: &str, substring: &str) {
@@ -57,13 +59,21 @@ mod tests {
             field_name: "comments".into(),
             table: "comments".into(),
             fields: hm! {
-                "title" => Field::Column("title".into()),
-                "content" => Field::Column("content".into()),
+                "title" => Field::Column(Column::Data(ColumnRef {
+                    column: "title".into(),
+                    alias: None,
+                    table: None
+                })),
+                "content" => Field::Column(Column::Data(ColumnRef {
+                    column: "content".into(),
+                    alias: None,
+                    table: None,
+                })),
                 "author" => Field::Join(JoinInfo {
-                        join: Join {
+                        join: JoinExpr::Join(Join {
                             on: SqlExpr::Raw(format!("{}.author_id = {}.id", comment_alias, comment_author_alias).into()),
                             kind: JoinType::LeftJoin
-                        },
+                        }),
                         extends: ExtendsNode {
                             extends: user_alias.into(),
                             alias: comment_author_alias.into(),
@@ -78,12 +88,16 @@ mod tests {
             field_name: "posts".into(),
             table: "posts".into(),
             fields: hm! {
-                "title" => Field::Column("title".into()),
+                "title" => Field::Column(Column::Data(ColumnRef {
+                    column: "title".into(),
+                    alias: None,
+                    table: None,
+                })),
                 "author" => Field::Join(JoinInfo {
-                        join: Join {
+                        join: JoinExpr::Join(Join {
                             on: SqlExpr::Raw(format!("\"{}\".author_id = \"{}\".id", post_alias, post_author_alias).into()),
                             kind: JoinType::LeftJoin
-                        },
+                        }),
                         extends: ExtendsNode {
                             extends: user_alias.into(),
                             alias: post_author_alias.into(),
@@ -99,13 +113,21 @@ mod tests {
             field_name: "user".into(),
             table: "users".into(),
             fields: hm! {
-                "id" => Field::Column("id".into()),
-                "name" => Field::Column("name".into()),
+                "id" => Field::Column(Column::Data(ColumnRef {
+                    column: "id".into(),
+                    alias: None,
+                    table: None,
+                })),
+                "name" => Field::Column(Column::Data(ColumnRef {
+                    column: "name".into(),
+                    alias: None,
+                    table: None,
+                })),
                 "posts" => Field::Join(JoinInfo {
-                        join: Join {
+                        join: JoinExpr::Join(Join {
                             on: SqlExpr::Raw(format!("\"{}\".post_id = \"{}\".id", user_alias, post_alias).into()),
                             kind: JoinType::LeftJoin
-                        },
+                        }),
                         extends: ExtendsNode {
                             extends: post_alias.into(),
                             alias: post_alias.into(),
@@ -124,7 +146,7 @@ mod tests {
                 // comment: comment_alias,
                 // comment_author: comment_author_alias,
             },
-            schema: Root::from(vec![user.clone(), post.clone(), comment.clone()]),
+            schema: Root::from(vec![user, post, comment]),
         }
     }
 
@@ -134,7 +156,7 @@ mod tests {
         // since that doesn't exist in the schema. Maybe the underlying code should be fixed...
         let query = "{ posts { title } users {foo bar} }";
         let schema = get_schema();
-        let sql = build_sql_query(query, schema.schema, None).unwrap();
+        let sql = build_sql_query(query, schema.schema, None, JsValue::null()).unwrap();
 
         assert_contains(&sql, "SELECT");
         assert_contains(&sql, &format!("\"{}\".\"title\"", &schema.aliases.post));
@@ -144,7 +166,7 @@ mod tests {
     fn test_build_sql_query_2() {
         let query = "{ user { posts { title author { name } } } }";
         let schema = get_schema();
-        let sql = build_sql_query(query, schema.schema, None).unwrap();
+        let sql = build_sql_query(query, schema.schema, None, JsValue::null()).unwrap();
 
         assert_contains(&sql, "SELECT");
         assert_contains(&sql, &format!("\"{}\".\"title\"", &schema.aliases.post));
@@ -162,7 +184,7 @@ mod tests {
     fn test_build_sql_query_3() {
         let query = "{ user { id posts { title comments { author { name } } author { name } } } }";
         let schema = get_schema();
-        let sql = build_sql_query(query, schema.schema, None).unwrap();
+        let sql = build_sql_query(query, schema.schema, None, JsValue::null()).unwrap();
 
         assert_contains(&sql, "SELECT");
         assert_contains(&sql, &format!("\"{}\".\"id\"", schema.aliases.user));

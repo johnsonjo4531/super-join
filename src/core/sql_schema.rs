@@ -1,7 +1,7 @@
 use sea_query::{Alias, Expr, Query, SelectStatement, SimpleExpr};
 use serde::Serialize;
 
-use crate::core::shared_schema::{Join, SqlExpr};
+use crate::core::shared_schema::{Column, Join, SqlExpr};
 
 #[derive(Debug, Serialize)]
 pub struct SqlColumn {
@@ -21,11 +21,11 @@ pub struct SqlJoin {
 pub struct SqlSelect {
     pub table: String,
     pub alias: String,
-    pub columns: Vec<SqlColumn>,
+    pub columns: Vec<Column>,
     pub joins: Vec<SqlJoin>,
     pub where_clause: Option<SqlExpr>,
     pub order_by: Vec<SqlOrderBy>,
-    pub limit: Option<u32>,
+    pub limit: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,8 +55,25 @@ impl From<&SqlSelect> for SelectStatement {
 
         // SELECT columns: "table"."column" AS "alias"
         for col in &ast.columns {
-            let expr = Expr::col((Alias::new(&col.table), Alias::new(&col.name)));
-            select.expr_as(expr, Alias::new(&col.alias));
+            let expr: SimpleExpr = match col {
+                Column::Data(col) => match col.table {
+                    Some(ref table) => {
+                        Expr::column((Alias::new(table), Alias::new(col.column.clone())))
+                    }
+                    None => Expr::column(Alias::new(col.column.clone())),
+                },
+                Column::Expr(expr) => (&expr.data).into(),
+            };
+            // select.expr(expr);
+            let alias = match col {
+                Column::Expr(col) => &col.alias,
+                Column::Data(col) => &col.alias,
+            };
+
+            match alias {
+                Some(alias) => select.expr_as(expr, Alias::new(alias)),
+                None => select.expr(expr),
+            };
         }
 
         // JOINs

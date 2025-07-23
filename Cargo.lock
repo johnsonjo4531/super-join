@@ -252,6 +252,7 @@ name = "super-join"
 version = "0.0.0"
 dependencies = [
  "graphql-parser",
+ "js-sys",
  "sea-query",
  "serde",
  "serde_json",

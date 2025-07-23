@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::core::shared_schema::Join;
+use crate::core::shared_schema::{Column, ColumnRef, Join, JoinExpr};
 
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
@@ -40,7 +40,7 @@ impl From<Vec<Node>> for Root {
     }
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
 pub enum AnyNode {
     #[serde(rename = "alias")]
@@ -49,16 +49,21 @@ pub enum AnyNode {
     Node(Node),
 }
 
+pub enum AnyNodeRef<'a> {
+    AliasNode(&'a ExtendsNode),
+    Node(&'a Node),
+}
+
 #[derive(Tsify, Deserialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
 pub struct ExtendsNode {
     pub alias: String,
     pub field_name: String,
-    /// The alias this node extends
+    /// The alias this node extends from the Root
     pub extends: String,
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
 pub struct Node {
     /// The SuperJoin Identifier and SQL alias.
@@ -72,27 +77,27 @@ pub struct Node {
     pub fields: HashMap<String, Field>,
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
 #[serde(tag = "kind")]
 pub enum Field {
     #[serde(rename = "column")]
-    Column(ColumnInfo),
+    Column(Column),
     #[serde(rename = "join")]
     Join(JoinInfo),
     #[serde(rename = "where")]
     Where(String),
     #[serde(rename = "order_by")]
-    OrderBy(OrderBy),
+    OrderBy(Vec<OrderBy>),
     #[serde(rename = "limit")]
-    Limit(u32),
+    Limit(u64),
 }
 
 #[derive(Tsify, Deserialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
 #[serde(tag = "kind")]
 pub struct OrderBy {
-    pub expr: ColumnInfo,
+    pub expr: ColumnRef,
     pub direction: OrderDirection,
 }
 
@@ -126,10 +131,10 @@ impl From<&str> for ColumnInfo {
     }
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
+#[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
 pub struct JoinInfo {
     /// The id of a root type
     pub extends: ExtendsNode,
-    pub join: Join,
+    pub join: JoinExpr,
 }
