@@ -10,20 +10,20 @@ pub trait AsFn {
     fn as_fn(&self) -> &Function;
 }
 
-// /// Macro to implement `AsFunction` for any list of types
-// macro_rules! impl_as_function {
-//     ($($t:ty),* $(,)?) => {
-//         $(
-//             impl AsFn for $t {
-//                 fn as_fn(&self) -> &Function {
-//                     // Optional: safety check in debug builds
-//                     debug_assert!(self.obj.is_function(), concat!(stringify!($t), " is not a JS function"));
-//                     self.obj.unchecked_ref()
-//                 }
-//             }
-//         )*
-//     };
-// }
+/// Macro to implement `AsFunction` for any list of types
+macro_rules! impl_as_function {
+    ($($t:ty),* $(,)?) => {
+        $(
+            impl AsFn for $t {
+                fn as_fn(&self) -> &Function {
+                    // Optional: safety check in debug builds
+                    debug_assert!(self.obj.is_function(), concat!(stringify!($t), " is not a JS function"));
+                    self.obj.unchecked_ref()
+                }
+            }
+        )*
+    };
+}
 
 // Common implementation pattern
 macro_rules! impl_debug_for_js_fn {
@@ -71,13 +71,13 @@ impl_debug_for_js_fn! {
     ThunkFn,
 }
 
-// impl_as_function! {
-//     ExprFn,
-//     WhereFn,
-//     JoinFn,
-//     OrderByFn,
-//     ThunkFn,
-// }
+impl_as_function! {
+    ExprFn,
+    WhereFn,
+    JoinFn,
+    OrderByFn,
+    ThunkFn,
+}
 
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
@@ -111,50 +111,59 @@ pub struct FieldTypeExtension {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sql_column: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sql_expr: Option<FnValue<ExprFn, String>>,
+    #[tsify(
+        type = "string | ((tableAlias: string, args: any, context: any, sqlASTNode: any) => (string | Promise<string>))"
+    )]
+    pub sql_expr: Option<FnValue<String>>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "where")]
-    pub where_clause: Option<FnValue<WhereFn, String>>,
+    #[tsify(
+        type = "string | ((tableAlias: string, args: any, context: any, sqlASTNode: any) => (string | Promise<string>))"
+    )]
+    pub where_clause: Option<FnValue<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub order_by: Option<OrderBy>,
+    pub order_by: Option<JoinMonsterOrderBy>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sql_join: Option<FnValue<JoinFn, String>>,
+    #[tsify(
+        type = "string | ((args: any, context: any) => {column: string, direction: 'asc' | 'desc' | 'ASC' | 'DESC'}[])"
+    )]
+    pub sql_join: Option<FnValue<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sql_batch: Option<String>,
 }
 
 #[derive(Tsify, Deserialize, Serialize)]
 #[tsify(from_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub enum FnValue<F, V> {
-    #[serde(skip_deserializing, skip_serializing)] // can't deserialize or serialize the Function
-    Fn(F),
+#[serde(rename_all = "snake_case", tag = "value_type", content = "value")]
+pub enum FnValue<V: Clone> {
+    #[serde(skip_serializing, skip_deserializing)] // can't deserialize or serialize the Function
+    Func(js_sys::Function),
     Value(V),
 }
 
-impl<F: Clone, V: Clone> Clone for FnValue<F, V> {
+impl<V: Clone> Clone for FnValue<V> {
     fn clone(&self) -> Self {
         match self {
-            Self::Fn(arg0) => Self::Fn(arg0.clone()),
+            Self::Func(arg0) => Self::Func(arg0.clone()),
             Self::Value(arg0) => Self::Value(arg0.clone()),
         }
     }
 }
 
-impl<F, V: ToString> ToString for FnValue<F, V> {
+impl<V: ToString + Clone> ToString for FnValue<V> {
     fn to_string(&self) -> String {
         match self {
-            FnValue::Fn(_) => "Fn(<function>)".into(),
+            FnValue::Func(_) => "Fn(<function>)".into(),
             FnValue::Value(v) => format!("Value({})", v.to_string()),
         }
     }
 }
 
-impl<F, V: std::fmt::Debug> std::fmt::Debug for FnValue<F, V> {
+impl<V: std::fmt::Debug + Clone> std::fmt::Debug for FnValue<V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FnValue::Fn(_) => write!(f, "Fn(<function>)"),
+            FnValue::Func(_) => write!(f, "Fn(<function>)"),
             FnValue::Value(v) => f.debug_tuple("Value").field(v).finish(),
         }
     }
@@ -163,8 +172,8 @@ impl<F, V: std::fmt::Debug> std::fmt::Debug for FnValue<F, V> {
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub enum OrderBy {
-    Old(HashMap<String, OrderDirection>),
+pub enum JoinMonsterOrderBy {
+    Old(HashMap<String, JoinMonsterOrderDirection>),
     Explicit(Vec<ExplicitOrderBy>),
     #[serde(skip_deserializing)] // can't deserialize into Function
     Dynamic(OrderByFn),
@@ -174,14 +183,14 @@ pub enum OrderBy {
 #[tsify(from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct ExplicitOrderBy {
-    column: String,
-    direction: OrderDirection,
+    pub column: String,
+    pub direction: JoinMonsterOrderDirection,
 }
 
-#[derive(Tsify, Deserialize, Debug)]
+#[derive(Tsify, Deserialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
-pub enum OrderDirection {
+pub enum JoinMonsterOrderDirection {
     Asc,
     Desc,
     #[serde(rename = "ASC")]

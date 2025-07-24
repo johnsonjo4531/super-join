@@ -6,7 +6,14 @@ export function runtime_stats(
   assertContains: (str: string, substring: string) => void,
 ) {
   console.time("First run of buildSqlQuery (slow because of initialization)");
-  const sql = buildSqlQuery(`{posts { title author  } }`, metadata);
+  const sql = buildSqlQuery(
+    `{posts { title author  } }`,
+    metadata,
+    {},
+    {
+      builder: "postgres",
+    },
+  );
   console.timeEnd(
     "First run of buildSqlQuery (slow because of initialization)",
   );
@@ -17,6 +24,10 @@ export function runtime_stats(
     const sql2 = buildSqlQuery(
       `{ user { posts { title author  } } }`,
       metadata,
+      {},
+      {
+        builder: "postgres",
+      },
     );
   }
   console.timeEnd(
@@ -30,7 +41,14 @@ export function test_1(
   assertContains: (str: string, substring: string) => void,
 ) {
   console.time("buildSqlQuery");
-  const sql = buildSqlQuery(`{posts { title author { name } } }`, metadata);
+  const sql = buildSqlQuery(
+    `{posts { title author { name } } }`,
+    metadata,
+    {},
+    {
+      builder: "postgres",
+    },
+  );
   console.timeEnd("buildSqlQuery");
 
   assertContains(sql, `"${aliases.post}"."title"`);
@@ -39,9 +57,12 @@ export function test_1(
 
 export function user(assertContains: (str: string, substring: string) => void) {
   console.time("buildSqlQuery");
+  const meta = JSON.stringify(metadata);
+  console.log(meta);
   const sql = buildSqlQuery(
     `{ user { posts { title author { name }  } } }`,
     metadata,
+    {},
     {
       builder: "postgres",
     },

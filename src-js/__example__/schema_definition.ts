@@ -6,14 +6,21 @@ export const post: Node = {
   field_name: "posts",
   table: "posts",
   fields: {
-    title: { kind: "column", column: "title", table: aliases.post },
+    title: {
+      field_type: "column",
+      column_type: "data",
+      column: "title",
+      table: aliases.post,
+      alias: null,
+    },
     author: {
-      kind: "join",
+      field_type: "join",
       join: {
-        kind: "left_join",
-        on: {
-          kind: "raw",
-          value: `${aliases.post}".author_id = "${aliases.post_author}".id`,
+        join_type: "from_js",
+        // value_type: "value",
+        value: {
+          value_type: "value",
+          value: `"${aliases.post}".author_id = "${aliases.post_author}".id`,
         },
       },
       extends: {
@@ -30,16 +37,29 @@ export const user: Node = {
   field_name: "user",
   table: "users",
   fields: {
-    id: { kind: "column", column: "id", table: aliases.user },
-    name: { kind: "column", column: "name", table: aliases.user },
+    id: {
+      field_type: "column",
+      column_type: "data",
+      column: "id",
+      table: aliases.user,
+      alias: null,
+    },
+    name: {
+      field_type: "column",
+      column_type: "data",
+      column: "name",
+      table: aliases.user,
+      alias: null,
+    },
     posts: {
-      kind: "join",
+      field_type: "join",
       join: {
-        on: {
-          kind: "raw",
+        join_type: "from_js",
+        // value_type: "fn",
+        value: {
+          value_type: "value",
           value: `"${aliases.user}".post_id = "${aliases.post}".id`,
         },
-        kind: "left_join",
       },
       extends: {
         alias: aliases.post,

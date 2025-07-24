@@ -9,7 +9,6 @@ pub mod wasm;
 
 #[cfg(test)]
 mod tests {
-    use wasm_bindgen::JsValue;
 
     use crate::core::{
         schema::{ExtendsNode, Field, JoinInfo, Node, Root},
@@ -156,7 +155,7 @@ mod tests {
         // since that doesn't exist in the schema. Maybe the underlying code should be fixed...
         let query = "{ posts { title } users {foo bar} }";
         let schema = get_schema();
-        let sql = build_sql_query(query, schema.schema, None, JsValue::null()).unwrap();
+        let sql = build_sql_query(query, schema.schema, None, None).unwrap();
 
         assert_contains(&sql, "SELECT");
         assert_contains(&sql, &format!("\"{}\".\"title\"", &schema.aliases.post));
@@ -166,7 +165,7 @@ mod tests {
     fn test_build_sql_query_2() {
         let query = "{ user { posts { title author { name } } } }";
         let schema = get_schema();
-        let sql = build_sql_query(query, schema.schema, None, JsValue::null()).unwrap();
+        let sql = build_sql_query(query, schema.schema, None, None).unwrap();
 
         assert_contains(&sql, "SELECT");
         assert_contains(&sql, &format!("\"{}\".\"title\"", &schema.aliases.post));
@@ -184,7 +183,7 @@ mod tests {
     fn test_build_sql_query_3() {
         let query = "{ user { id posts { title comments { author { name } } author { name } } } }";
         let schema = get_schema();
-        let sql = build_sql_query(query, schema.schema, None, JsValue::null()).unwrap();
+        let sql = build_sql_query(query, schema.schema, None, None).unwrap();
 
         assert_contains(&sql, "SELECT");
         assert_contains(&sql, &format!("\"{}\".\"id\"", schema.aliases.user));

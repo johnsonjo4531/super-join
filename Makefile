@@ -1,5 +1,5 @@
 go:
-	 cargo test
+	 cargo test --verbose
 
 node:
 	wasm-pack build --release --target nodejs && npm i && npm run test

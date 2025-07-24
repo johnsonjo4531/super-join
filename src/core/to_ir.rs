@@ -1,17 +1,12 @@
-use graphql_parser::query::Text;
-use graphql_parser::schema::{
-    Definition, Document, Field as GqlField, Type, TypeDefinition, Value,
-};
-use sea_query::Value;
-use serde::Deserialize;
-use std::collections::{BTreeMap, HashMap};
-use tsify::Tsify;
-use wasm_bindgen::JsValue;
+use graphql_parser::schema::{Definition, Document, Type, TypeDefinition};
 
-use crate::core::join_monster_schema::{Extension, FnValue};
-use crate::core::schema::{
-    ColumnInfo, ExtendsNode, Field as IRField, JoinInfo, Node, OrderBy, RootInput,
-};
+use js_sys::Function;
+use serde::Deserialize;
+use std::collections::HashMap;
+use tsify::Tsify;
+
+use crate::core::join_monster_schema::{self, Extension, FnValue};
+use crate::core::schema::{ExtendsNode, Field as IRField, JoinInfo, Node, OrderBy, RootInput};
 use crate::core::shared_schema::{
     Column, ColumnRef, IRParseError, Join, JoinExpr, JoinType, SqlExpr,
 };
@@ -19,19 +14,18 @@ use crate::core::shared_schema::{
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
 pub struct Extensions {
-    #[tsify(type = "Record<String, Extension>")]
+    #[tsify(type = "Record<string, Extension>")]
     pub extensions: HashMap<String, Extension>,
 }
 
 pub fn ir_from_join_monster(
     doc: &Document<'_, String>,
     extensions: Extensions,
-    context: JsValue,
 ) -> Result<RootInput, IRParseError> {
     let mut nodes = Vec::new();
 
-    let obj_num = 1;
-    let field_num = 1;
+    let mut obj_num = 1;
+    let mut field_num = 1;
 
     for def in &doc.definitions {
         let obj = match def {
@@ -49,7 +43,7 @@ pub fn ir_from_join_monster(
             Extension::Field(_) => Err(IRParseError::ObjectExtensionExpected),
         }?;
 
-        let table_name = ext.sql_table;
+        let table_name = ext.sql_table.clone();
 
         let alias = format!("{}_{}", obj.name.clone(), obj_num);
         obj_num += 1;
@@ -67,44 +61,71 @@ pub fn ir_from_join_monster(
                 Extension::Object(_) => Err(IRParseError::FieldExtensionExpected),
             }?;
 
-            if let Some(col) = ext.sql_column {
+            if let Some(col) = &ext.sql_column {
+                let field_alias = format!("{}_{}", field.name.clone(), field_num);
+                field_num += 1;
                 fields.insert(
                     field.name.clone(),
                     IRField::Column(Column::Data(ColumnRef {
                         column: col.to_string(),
                         table: Some(alias.clone()),
-                        alias: Some(alias.clone()),
+                        alias: Some(field_alias.clone()),
                     })),
                 );
             }
 
-            if let Some(expr) = ext.sql_expr {
+            if let Some(expr) = &ext.sql_expr {
+                let field_alias = format!("{}_{}", field.name.clone(), field_num);
+                field_num += 1;
                 fields.insert(
                     field.name.clone(),
-                    IRField::Column(Column::Expr(SqlExpr::Raw(expr.to_string().into()))),
+                    IRField::Column(Column::Expr(crate::core::shared_schema::WithAlias {
+                        alias: Some(field_alias.clone()),
+                        data: SqlExpr::Raw(expr.to_string().into()),
+                    })),
                 );
             }
 
-            if let Some(expr) = ext.where_clause {
+            if let Some(expr) = &ext.where_clause {
                 fields.insert(field.name.clone(), IRField::Where(expr.to_string()));
             }
 
-            if let Some(order_by) = ext.order_by {
+            if let Some(order_by) = &ext.order_by {
+                let field_alias = format!("{}_{}", field.name.clone(), field_num);
+                field_num += 1;
                 let order_by: Vec<OrderBy> = match order_by {
-                    join_monster_schema::OrderBy::Dynamic(value) => {
+                    join_monster_schema::JoinMonsterOrderBy::Dynamic(_) => {
                         // Unimplemented
+                        vec![]
                     }
-                    join_monster_schema::OrderBy::Explicit(value) => value,
-                    join_monster_schema::OrderBy::Old(value) => value
+                    join_monster_schema::JoinMonsterOrderBy::Explicit(value) => value
                         .iter()
                         .map(|x| OrderBy {
-                            expr: ColumnInfo {
-                                column: column.to_string(),
+                            expr: ColumnRef {
                                 table: Some(alias.clone()),
+                                alias: Some(field_alias.clone()),
+                                column: x.column.clone(),
                             },
-                            direction,
+                            direction: x.direction.clone().into(),
                         })
-                        .into(),
+                        .collect(),
+                    join_monster_schema::JoinMonsterOrderBy::Old(value) => value
+                        .clone()
+                        .into_keys()
+                        .map(|col| {
+                            let val = value
+                                .get(&col)
+                                .ok_or(IRParseError::UnexpectedType("None in OrderBy".into()))?;
+                            Ok(OrderBy {
+                                expr: ColumnRef {
+                                    column: col.to_string(),
+                                    table: Some(alias.clone()),
+                                    alias: Some(field_alias.clone()),
+                                },
+                                direction: val.clone().into(),
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
                 };
 
                 fields.insert(field.name.clone(), IRField::OrderBy(order_by));
@@ -114,59 +135,25 @@ pub fn ir_from_join_monster(
                 fields.insert(field.name.clone(), IRField::Limit(limit as u64));
             }
 
-            if let Some(join_expr) = ext.sql_join {
-                // let root_table_alias = alias.clone().into();
-                // let other_table_alias = get_named_type(&field.field_type)
-                //     .ok_or(IRParseError::MissingNamedType)
-                //     .into()?;
-                // let arguments = js_sys::Array::new();
-                // for value in field.arguments.iter() {
-                //     let value: JsValue = value_into_js_value(value.);
-                //     arguments.push(&value);
-                // }
-
-                // let context = context;
-                // let sql_ast_node = JsValue::null();
-                // let value_array: [JsValue; 5] = [
-                //     root_table_alias,
-                //     other_table_alias,
-                //     arguments,
-                //     context,
-                //     sql_ast_node,
-                // ];
-
-                // // Create an array of arguments
-                // let args = js_sys::Array::new();
-                // for value in value_array.iter() {
-                //     args.push(value);
-                // }
-                // let join_expr: String = match join_expr {
-                //     FnValue::Fn(js_function) => {
-                //         let value = js_function.apply(&JsValue::null(), &args);
-
-                //         let value = match value {
-                //             Ok(value) => Ok(value.as_string()),
-                //             _ => Err(IRParseError::FnValueExpected),
-                //         }?;
-                //         let value = value.ok_or(IRParseError::ExpectedStringValue)?;
-                //         value
-                //     }
-                //     FnValue::Value(value) => value,
-                // };
-                // let parsed_join = SqlExpr::Raw(join_expr.into());
+            if let Some(join_expr) = &ext.sql_join {
+                let field_alias = format!("{}_{}", field.name.clone(), field_num);
+                field_num += 1;
 
                 fields.insert(
                     field.name.clone(),
                     IRField::Join(JoinInfo {
                         extends: ExtendsNode {
-                            alias: field.name.clone(),
+                            alias: field_alias.clone(),
                             field_name: field.name.clone(),
                             extends: alias.clone(),
                         },
                         join: match join_expr {
-                            FnValue::Fn(func) => JoinExpr::Fn(FnValue::Fn(func)),
+                            FnValue::Func(func) => {
+                                let func: Function = func.clone();
+                                JoinExpr::FromJs(FnValue::Func(func).into())
+                            }
                             FnValue::Value(value) => JoinExpr::Join(Join {
-                                on: SqlExpr::Raw(value.into()),
+                                on: SqlExpr::Raw(value.clone().into()),
                                 kind: JoinType::LeftJoin,
                             }),
                         },
@@ -176,8 +163,6 @@ pub fn ir_from_join_monster(
                 let nested_type = get_named_type(&field.field_type)
                     .ok_or(IRParseError::TypeNotFound(field.name.clone()))?;
 
-                let alias = format!("{}_{}", field.name.clone(), field_num);
-                field_num += 1;
                 nodes.push(Node {
                     alias: alias.clone(),
                     field_name: field.name.clone(),
@@ -234,7 +219,7 @@ pub fn ir_from_join_monster(
 
         nodes.push(Node {
             alias: alias.clone(),
-            field_name: obj.name.into(),
+            field_name: obj.name.clone().into(),
             table: table_name,
             fields,
         });
@@ -243,31 +228,39 @@ pub fn ir_from_join_monster(
     Ok(RootInput(nodes))
 }
 
-trait ValueExt<'a> {
-    fn as_object(&self) -> Option<&BTreeMap<String, Value<'a, String>>>;
-    fn as_str_value(&self) -> Option<&str>;
-    fn as_i64(&self) -> Option<i64>;
-}
-
-impl<'a> ValueExt<'a> for Value<'a, String> {
-    fn as_object(&self) -> Option<&BTreeMap<String, Value<'a, String>>> {
-        match self {
-            Value::Object(map) => Some(map.into()),
-            _ => None,
-        }
-    }
-
-    fn as_str_value(&self) -> Option<&str> {
-        match self {
-            Value::String(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    fn as_i64(&self) -> Option<i64> {
-        match self {
-            Value::Int(i) => i.as_i64(),
-            _ => None,
-        }
+pub fn get_named_type(ty: &Type<'_, String>) -> Option<String> {
+    match ty {
+        Type::NamedType(name) => Some(name.to_string()),
+        Type::ListType(inner) => get_named_type(inner),
+        Type::NonNullType(inner) => get_named_type(inner),
     }
 }
+
+// trait ValueExt<'a> {
+//     fn as_object(&self) -> Option<&BTreeMap<String, Value<'a, String>>>;
+//     fn as_str_value(&self) -> Option<&str>;
+//     fn as_i64(&self) -> Option<i64>;
+// }
+
+// impl<'a> ValueExt<'a> for Value<'a, String> {
+//     fn as_object(&self) -> Option<&BTreeMap<String, Value<'a, String>>> {
+//         match self {
+//             Value::Object(map) => Some(map.into()),
+//             _ => None,
+//         }
+//     }
+
+//     fn as_str_value(&self) -> Option<&str> {
+//         match self {
+//             Value::String(s) => Some(s),
+//             _ => None,
+//         }
+//     }
+
+//     fn as_i64(&self) -> Option<i64> {
+//         match self {
+//             Value::Int(i) => i.as_i64(),
+//             _ => None,
+//         }
+//     }
+// }

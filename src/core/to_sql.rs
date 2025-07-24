@@ -1,37 +1,36 @@
+use std::sync::Arc;
+
 use graphql_parser::{
     parse_query,
-    query::{Definition, Document, OperationDefinition, Selection, Type, Value},
+    query::{Definition, Document, OperationDefinition, Selection, Value},
 };
 use sea_query::{GenericBuilder, SelectStatement};
 use wasm_bindgen::JsValue;
 
 use crate::core::{
     join_monster_schema::FnValue,
-    schema::{
-        AnyNode, AnyNodeRef, BuilderType, ExtendsNode, Field, JoinInfo, Node, Options,
-        OrderDirection, Root,
-    },
-    shared_schema::{IRParseError, Join, JoinExpr, JoinType, SqlExpr},
-    sql_schema::{SqlColumn, SqlJoin, SqlOrderDirection, SqlSelect},
+    schema::{AnyNode, BuilderType, ExtendsNode, Field, Node, Options, OrderDirection, Root},
+    shared_schema::{self, Column, ColumnRef, Join, JoinExpr, JoinType, SqlExpr, WithAlias},
+    sql_schema::{SqlJoin, SqlOrderDirection, SqlSelect},
 };
 
-fn resolve_node<'a>(any_node: &'a AnyNodeRef, root: &'a Root) -> Result<&'a Node, String> {
+fn resolve_node<'a>(any_node: &'a AnyNode, root: &'a Root) -> Result<&'a Node, String> {
     match any_node {
-        AnyNodeRef::AliasNode(node) => {
+        AnyNode::AliasNode(node) => {
             let node = root
                 .0
                 .get(&node.extends)
                 .ok_or(format!("Unable to resolve node"))?;
             Ok(node)
         }
-        AnyNodeRef::Node(node) => Ok(node),
+        AnyNode::Node(node) => Ok(node),
     }
 }
 
-fn resolve_extends_node<'a>(any_node: &'a AnyNodeRef) -> Option<&'a ExtendsNode> {
+fn resolve_extends_node<'a>(any_node: &'a AnyNode) -> Option<&'a ExtendsNode> {
     match any_node {
-        AnyNodeRef::AliasNode(node) => Some(node),
-        AnyNodeRef::Node(_) => None,
+        AnyNode::AliasNode(node) => Some(node),
+        AnyNode::Node(_) => None,
     }
 }
 
@@ -42,8 +41,8 @@ pub fn parse_gql(resolve_info: &str) -> Result<Document<&str>, String> {
 pub fn build_sql_query(
     query: &str,
     metadata: Root,
+    context: Option<JsValue>,
     options: Option<Options>,
-    context: JsValue,
 ) -> Result<String, String> {
     let doc = parse_gql(query)?;
 
@@ -59,24 +58,23 @@ pub fn build_sql_query(
                             "no such field with field_name = {} in nodes",
                             root_field.name
                         ))?;
+
+                    let node = AnyNode::Node(node.clone());
                     let sql_ast = build_sql_ast(
                         // TODO: can I avoid this clone?
-                        &AnyNodeRef::Node(&node.clone()),
-                        root_field,
-                        &metadata,
-                        &context,
+                        node, root_field, &metadata, &context,
                     )?;
                     let sql = match options.map(|x| x.builder) {
                         Some(BuilderType::Postgres) => {
-                            render_sql(&sql_ast, sea_query::PostgresQueryBuilder)
+                            render_sql(sql_ast, sea_query::PostgresQueryBuilder)
                         }
                         Some(BuilderType::MySql) => {
-                            render_sql(&sql_ast, sea_query::MysqlQueryBuilder)
+                            render_sql(sql_ast, sea_query::MysqlQueryBuilder)
                         }
                         Some(BuilderType::Sqlite) => {
-                            render_sql(&sql_ast, sea_query::SqliteQueryBuilder)
+                            render_sql(sql_ast, sea_query::SqliteQueryBuilder)
                         }
-                        None => render_sql(&sql_ast, sea_query::PostgresQueryBuilder),
+                        None => render_sql(sql_ast, sea_query::PostgresQueryBuilder),
                     };
                     return Ok(sql);
                 }
@@ -89,7 +87,7 @@ pub fn build_sql_query(
     ))
 }
 
-fn render_sql<T>(select: &SqlSelect, builder: T) -> String
+fn render_sql<T>(select: SqlSelect, builder: T) -> String
 where
     T: GenericBuilder,
 {
@@ -100,13 +98,13 @@ where
 }
 
 fn build_sql_ast<'a>(
-    any_node: &AnyNodeRef,
-    field: &graphql_parser::query::Field<'a, &'a str>,
-    root: &Root,
-    context: &JsValue,
+    any_node: AnyNode,
+    field: &'a graphql_parser::query::Field<'a, &'a str>,
+    root: &'a Root,
+    context: &'a Option<JsValue>,
 ) -> Result<SqlSelect, String> {
-    let mut columns = vec![];
-    let mut joins = vec![];
+    let mut columns: Vec<shared_schema::Column> = vec![];
+    let mut joins: Vec<SqlJoin> = vec![];
     let mut where_clause = None;
     let mut limit = None;
     let mut order_by = vec![];
@@ -121,66 +119,90 @@ fn build_sql_ast<'a>(
     for sel in &field.selection_set.items {
         if let Selection::Field(subfield) = sel {
             if let Some(field_meta) = parent_node.fields.get(subfield.name) {
-                match &field_meta {
-                    Field::Column(column) => {
-                        columns.push(*column);
-                    }
-                    Field::Join(join_info) => {
-                        let join_sql_ast = build_sql_ast(
-                            &AnyNodeRef::AliasNode(&join_info.extends.clone()),
-                            subfield,
-                            root,
-                            context,
-                        )?;
-
-                        let root_table_alias: JsValue = alias.into();
-                        let other_table_alias = join_sql_ast.alias.into();
-                        let arguments = js_sys::Array::new();
-                        for value in field.arguments.iter() {
-                            let value: JsValue = value_into_js_value(&value.1);
-                            arguments.push(&value);
-                        }
-                        let arguments: JsValue = arguments.into();
-                        let sql_ast_node = JsValue::null();
-                        let value_array: [JsValue; 5] = [
-                            root_table_alias,
-                            other_table_alias,
-                            arguments,
-                            *context,
-                            sql_ast_node,
-                        ];
-
-                        // Create an array of arguments
-                        let args = js_sys::Array::new();
-                        for value in value_array.iter() {
-                            args.push(value);
-                        }
-                        // TODO: possibly add more join_types!
-                        let join_type: JoinType = JoinType::LeftJoin;
-                        let join_expr: String = match join_info.join {
-                            JoinExpr::Fn(FnValue::Fn(js_function)) => {
-                                let value = js_function.apply(&JsValue::null(), &args);
-
-                                let value = match value {
-                                    Ok(value) => Ok(value.as_string()),
-                                    _ => Err(IRParseError::FnValueExpected),
-                                };
-                                let value = value.or(Err(IRParseError::ExpectedStringValue))?;
-                                SqlExpr::Raw(value)
+                let result: Result<(), String> = match &field_meta {
+                    &Field::Column(column) => {
+                        let col: Column = match column.clone() {
+                            Column::Expr(WithAlias { alias: None, data }) => {
+                                Column::Expr(WithAlias {
+                                    alias: Some(alias.clone()),
+                                    data,
+                                })
                             }
-                            JoinExpr::Fn(FnValue::Value(value)) => SqlExpr::Raw(value.into()),
+                            Column::Data(ColumnRef {
+                                alias: inner_alias,
+                                column,
+                                table,
+                            }) => Column::Data(ColumnRef {
+                                alias: inner_alias,
+                                table: table.clone(),
+                                column,
+                            }),
+                            _ => column.clone(),
+                        };
+                        columns.push(col.into());
+                        Ok(())
+                    }
+                    &Field::Join(join_info) => {
+                        let extends = join_info.extends.clone();
+                        let node = AnyNode::AliasNode(Arc::new(extends));
+                        let join_sql_ast = build_sql_ast(node, subfield, &root, &context)?;
+                        // TODO: possibly add more join_types!
+                        let mut join_type: JoinType = JoinType::LeftJoin;
+                        let join_expr: Result<SqlExpr, String> = match &join_info.join {
+                            JoinExpr::FromJs(shared_schema::Value {
+                                value: FnValue::Func(js_function),
+                            }) => match context {
+                                Some(context) => {
+                                    let root_table_alias: &JsValue = &alias.clone().into();
+                                    let other_table_alias: JsValue =
+                                        join_sql_ast.alias.clone().into();
+                                    let arguments = js_sys::Array::new();
+                                    for value in field.arguments.iter() {
+                                        let value: &JsValue = &value_into_js_value(&value.1);
+                                        arguments.push(value);
+                                    }
+                                    let arguments: &JsValue = &arguments.into();
+                                    let sql_ast_node = &JsValue::null();
+                                    let value_array: [&JsValue; 5] = [
+                                        root_table_alias,
+                                        &other_table_alias,
+                                        arguments,
+                                        &context,
+                                        sql_ast_node,
+                                    ];
+                                    let args = js_sys::Array::new();
+                                    for value in value_array.iter() {
+                                        args.push(value);
+                                    }
+                                    let value = js_function
+                                        .apply(&JsValue::null(), &args)
+                                        .or(Err("Cannot call js_function..."))?;
+                                    if let Some(str) = value.as_string() {
+                                        Ok(SqlExpr::Raw(str.into()))
+                                    } else {
+                                        Err("Foo".into())
+                                    }
+                                }
+                                None => Err("Bar".into()),
+                            },
+                            JoinExpr::FromJs(shared_schema::Value {
+                                value: FnValue::Value(value),
+                            }) => Ok(SqlExpr::Raw(shared_schema::Value {
+                                value: value.clone(),
+                            })),
                             JoinExpr::Join(join) => {
-                                join_type = join.kind;
-                                join.on
+                                join_type = join.kind.clone();
+                                Ok(join.on.clone())
                             }
                         };
-                        let parsed_join = SqlExpr::Raw(join_expr.into());
+
+                        let join_expr = join_expr?;
 
                         joins.push(SqlJoin {
                             table: join_sql_ast.table,
                             alias: join_sql_ast.alias,
                             join: Join {
-                                on: parsed_join,
+                                on: join_expr,
                                 kind: join_type,
                             },
                         });
@@ -190,12 +212,17 @@ fn build_sql_ast<'a>(
                         for column in join_sql_ast.columns {
                             columns.push(column);
                         }
+                        Ok(())
                     }
-                    Field::Where(_where) => {
+                    &Field::Where(_where) => {
                         where_clause = Some(SqlExpr::Raw(_where.clone().into()));
+                        Ok(())
                     }
-                    Field::Limit(_limit) => limit = Some(_limit.clone()),
-                    Field::OrderBy(_order_by) => {
+                    Field::Limit(_limit) => {
+                        limit = Some(_limit.clone());
+                        Ok(())
+                    }
+                    &Field::OrderBy(_order_by) => {
                         for _order_by in _order_by {
                             order_by.push(crate::core::sql_schema::SqlOrderBy {
                                 expr: SqlExpr::Raw(_order_by.expr.column.clone().into()),
@@ -205,8 +232,10 @@ fn build_sql_ast<'a>(
                                 },
                             });
                         }
+                        Ok(())
                     }
                 };
+                result?;
             }
         }
     }
@@ -257,14 +286,6 @@ pub fn value_into_js_value<'a>(value: &'a Value<&'a str>) -> JsValue {
             }
             obj.into()
         }
-    }
-}
-
-pub fn get_named_type(ty: &Type<'_, String>) -> Option<String> {
-    match ty {
-        Type::NamedType(name) => Some(name.to_string()),
-        Type::ListType(inner) => get_named_type(inner),
-        Type::NonNullType(inner) => get_named_type(inner),
     }
 }
 

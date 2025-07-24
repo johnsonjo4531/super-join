@@ -2,7 +2,7 @@ use sea_query::{Expr, ExprTrait, IntoLikeExpr};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
-use crate::core::join_monster_schema::{FnValue, JoinFn};
+use crate::core::join_monster_schema::FnValue;
 
 #[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
@@ -31,7 +31,7 @@ pub struct SqlParam {
 
 #[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "sql_value", rename_all = "snake_case")]
 pub enum SqlValue {
     Int(Value<Option<i64>>),
     Float(Value<Option<f64>>),
@@ -95,7 +95,7 @@ pub struct NotExpr {
 
 #[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind")]
+#[serde(tag = "column_type", rename_all = "snake_case")]
 pub enum Column {
     Expr(WithAlias<SqlExpr>),
     Data(ColumnRef),
@@ -103,7 +103,6 @@ pub enum Column {
 
 #[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind")]
 pub struct WithAlias<T> {
     pub alias: Option<String>,
     pub data: T,
@@ -111,7 +110,7 @@ pub struct WithAlias<T> {
 
 #[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "sql_expr_type", rename_all = "snake_case")]
 pub enum SqlExpr {
     /// e.g. "user.id"
     Column(ColumnRef),
@@ -335,8 +334,13 @@ impl From<&JoinType> for sea_query::JoinType {
 
 #[derive(Tsify, Deserialize, Serialize, Debug)]
 #[tsify(from_wasm_abi)]
+#[serde(tag = "join_type", rename_all = "snake_case")]
 pub enum JoinExpr {
-    Fn(FnValue<JoinFn, String>),
+    #[tsify(
+        type = "{value: string | ((args: any, context: any) => {column: string, direction: 'asc' | 'desc' | 'ASC' | 'DESC'}[])}",
+        rename = "from_js"
+    )]
+    FromJs(Value<FnValue<String>>),
     Join(Join),
 }
 

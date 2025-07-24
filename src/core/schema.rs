@@ -1,9 +1,12 @@
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::core::shared_schema::{Column, ColumnRef, Join, JoinExpr};
+use crate::core::{
+    join_monster_schema,
+    shared_schema::{Column, ColumnRef, JoinExpr},
+};
 
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
@@ -28,13 +31,13 @@ pub struct RootInput(pub Vec<Node>);
 
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
-pub struct Root(#[tsify(type = "Record<string, Node>")] pub HashMap<String, Node>);
+pub struct Root(#[tsify(type = "Record<string, Node>")] pub HashMap<String, Arc<Node>>);
 
 impl From<Vec<Node>> for Root {
     fn from(values: Vec<Node>) -> Self {
         let mut map = std::collections::HashMap::new();
         for value in values {
-            map.insert(value.alias.clone(), value);
+            map.insert(value.alias.clone(), Arc::new(value));
         }
         Root(map)
     }
@@ -44,14 +47,9 @@ impl From<Vec<Node>> for Root {
 #[tsify(from_wasm_abi)]
 pub enum AnyNode {
     #[serde(rename = "alias")]
-    AliasNode(ExtendsNode),
+    AliasNode(Arc<ExtendsNode>),
     #[serde(rename = "node")]
-    Node(Node),
-}
-
-pub enum AnyNodeRef<'a> {
-    AliasNode(&'a ExtendsNode),
-    Node(&'a Node),
+    Node(Arc<Node>),
 }
 
 #[derive(Tsify, Deserialize, Clone, Debug)]
@@ -79,7 +77,7 @@ pub struct Node {
 
 #[derive(Tsify, Deserialize, Debug)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind")]
+#[serde(tag = "field_type")]
 pub enum Field {
     #[serde(rename = "column")]
     Column(Column),
@@ -95,7 +93,6 @@ pub enum Field {
 
 #[derive(Tsify, Deserialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind")]
 pub struct OrderBy {
     pub expr: ColumnRef,
     pub direction: OrderDirection,
@@ -103,10 +100,25 @@ pub struct OrderBy {
 
 #[derive(Tsify, Deserialize, Clone, Debug)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "kind")]
+#[serde(tag = "order_dir")]
 pub enum OrderDirection {
     Asc,
     Desc,
+}
+
+impl From<join_monster_schema::JoinMonsterOrderDirection> for OrderDirection {
+    fn from(value: join_monster_schema::JoinMonsterOrderDirection) -> Self {
+        match value {
+            join_monster_schema::JoinMonsterOrderDirection::Asc
+            | join_monster_schema::JoinMonsterOrderDirection::AscCaps => {
+                crate::core::schema::OrderDirection::Asc
+            }
+            join_monster_schema::JoinMonsterOrderDirection::Desc
+            | join_monster_schema::JoinMonsterOrderDirection::DescCaps => {
+                crate::core::schema::OrderDirection::Asc
+            }
+        }
+    }
 }
 
 #[derive(Tsify, Deserialize, Clone, Debug)]

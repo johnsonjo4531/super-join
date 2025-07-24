@@ -46,8 +46,8 @@ pub enum SqlOrderDirection {
     Desc,
 }
 
-impl From<&SqlSelect> for SelectStatement {
-    fn from(ast: &SqlSelect) -> Self {
+impl<'a> From<SqlSelect> for SelectStatement {
+    fn from(ast: SqlSelect) -> Self {
         let mut select = Query::select();
 
         // FROM "table" AS "alias"
@@ -56,19 +56,25 @@ impl From<&SqlSelect> for SelectStatement {
         // SELECT columns: "table"."column" AS "alias"
         for col in &ast.columns {
             let expr: SimpleExpr = match col {
-                Column::Data(col) => match col.table {
-                    Some(ref table) => {
-                        Expr::column((Alias::new(table), Alias::new(col.column.clone())))
+                Column::Data(col) => match col.table.clone() {
+                    Some(table) => {
+                        Expr::column((Alias::new(table.clone()), Alias::new(col.column.clone())))
                     }
-                    None => Expr::column(Alias::new(col.column.clone())),
+                    None => Expr::column((
+                        Alias::new(ast.alias.clone()),
+                        Alias::new(col.column.clone()),
+                    )),
                 },
-                Column::Expr(expr) => (&expr.data).into(),
+                Column::Expr(col) => (&col.data).into(),
             };
             // select.expr(expr);
             let alias = match col {
                 Column::Expr(col) => &col.alias,
                 Column::Data(col) => &col.alias,
             };
+
+            println!("alias: {:?}", alias);
+            println!("expr: {:?}", expr);
 
             match alias {
                 Some(alias) => select.expr_as(expr, Alias::new(alias)),

@@ -6,10 +6,15 @@ use crate::core::schema::{Options, Root, RootInput};
 pub fn build_sql_query(
     query: &str,
     metadata: RootInput,
-    options: Option<Options>,
     context: JsValue,
+    options: Option<Options>,
 ) -> Result<String, JsValue> {
-    match crate::core::to_sql::build_sql_query(query, Root::from(metadata.0), options, context) {
+    match crate::core::to_sql::build_sql_query(
+        query,
+        Root::from(metadata.0),
+        Some(context),
+        options,
+    ) {
         Ok(sql) => Ok(sql),
         Err(err) => Err(JsValue::from_str(&err)),
     }
