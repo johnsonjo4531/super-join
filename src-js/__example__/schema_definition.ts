@@ -10,7 +10,8 @@ export const post: Node = {
       field_type: "column",
       column_type: "data",
       column: "title",
-      table: aliases.post,
+      table: null,
+      // table: aliases.post,
       alias: null,
     },
     author: {
@@ -41,14 +42,14 @@ export const user: Node = {
       field_type: "column",
       column_type: "data",
       column: "id",
-      table: aliases.user,
+      table: null,
       alias: null,
     },
     name: {
       field_type: "column",
       column_type: "data",
       column: "name",
-      table: aliases.user,
+      table: null,
       alias: null,
     },
     posts: {

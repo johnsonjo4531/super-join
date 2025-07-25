@@ -61,7 +61,6 @@ pub fn build_sql_query(
 
                     let node = AnyNode::Node(node.clone());
                     let sql_ast = build_sql_ast(
-                        // TODO: can I avoid this clone?
                         node, root_field, &metadata, &context,
                     )?;
                     let sql = match options.map(|x| x.builder) {
@@ -122,22 +121,23 @@ fn build_sql_ast<'a>(
                 let result: Result<(), String> = match &field_meta {
                     &Field::Column(column) => {
                         let col: Column = match column.clone() {
-                            Column::Expr(WithAlias { alias: None, data }) => {
+                            Column::Expr(WithAlias { alias: None, data, }) => {
                                 Column::Expr(WithAlias {
                                     alias: Some(alias.clone()),
                                     data,
                                 })
                             }
                             Column::Data(ColumnRef {
-                                alias: inner_alias,
+                                alias: _alias,
                                 column,
-                                table,
+                                table: None,
                             }) => Column::Data(ColumnRef {
-                                alias: inner_alias,
-                                table: table.clone(),
+                                alias: _alias,
+                                table: Some(alias.clone()),
                                 column,
                             }),
-                            _ => column.clone(),
+                            _ => column.clone()
+                            ,
                         };
                         columns.push(col.into());
                         Ok(())
@@ -146,6 +146,7 @@ fn build_sql_ast<'a>(
                         let extends = join_info.extends.clone();
                         let node = AnyNode::AliasNode(Arc::new(extends));
                         let join_sql_ast = build_sql_ast(node, subfield, &root, &context)?;
+
                         // TODO: possibly add more join_types!
                         let mut join_type: JoinType = JoinType::LeftJoin;
                         let join_expr: Result<SqlExpr, String> = match &join_info.join {
