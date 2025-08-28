@@ -1,6 +1,9 @@
 use wasm_bindgen::prelude::*;
 
-use crate::core::schema::{Options, Root, RootInput};
+use crate::{
+    core::schema::{Options, Root, RootInput},
+    error::try_pretty_print_serde_error,
+};
 
 #[wasm_bindgen(js_name = buildSqlQuery)]
 pub fn build_sql_query(
@@ -9,14 +12,16 @@ pub fn build_sql_query(
     context: JsValue,
     options: Option<Options>,
 ) -> Result<String, JsValue> {
-    match crate::core::to_sql::build_sql_query(
-        query,
-        Root::from(metadata.0),
-        Some(context),
-        options,
-    ) {
+    let root = Root::from(metadata.0);
+    let result = crate::core::to_sql::build_sql_query(query, root, Some(context), options);
+
+    match result {
         Ok(sql) => Ok(sql),
-        Err(err) => Err(JsValue::from_str(&err)),
+        Err(err) => {
+            // Try to detect and pretty-print Serde error if it occurred inside the logic
+            let pretty = try_pretty_print_serde_error(&err);
+            Err(JsValue::from_str(&pretty))
+        }
     }
 }
 

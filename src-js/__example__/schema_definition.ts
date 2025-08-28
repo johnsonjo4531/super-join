@@ -21,7 +21,8 @@ export const post: Node = {
         // value_type: "value",
         value: {
           value_type: "value",
-          value: `"${aliases.post}".author_id = "${aliases.post_author}".id`,
+          value:
+            `"${aliases.post}".author_id = "${aliases.post_author}".id` as any,
         },
       },
       extends: {
@@ -59,7 +60,8 @@ export const user: Node = {
         // value_type: "fn",
         value: {
           value_type: "value",
-          value: `"${aliases.user}".post_id = "${aliases.post}".id`,
+          value: (() =>
+            `"${aliases.user}".post_id = "${aliases.post}".id`) as any,
         },
       },
       extends: {

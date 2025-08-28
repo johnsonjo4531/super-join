@@ -5,6 +5,7 @@
 // - MIT license (https://opensource.org/licenses/MIT)
 // at your option.
 pub mod core;
+mod error;
 pub mod wasm;
 
 #[cfg(test)]

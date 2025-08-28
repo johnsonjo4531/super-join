@@ -5,13 +5,17 @@ use graphql_parser::{
     query::{Definition, Document, OperationDefinition, Selection, Value},
 };
 use sea_query::{GenericBuilder, SelectStatement};
+use serde_json::Error;
 use wasm_bindgen::JsValue;
 
-use crate::core::{
-    join_monster_schema::FnValue,
-    schema::{AnyNode, BuilderType, ExtendsNode, Field, Node, Options, OrderDirection, Root},
-    shared_schema::{self, Column, ColumnRef, Join, JoinExpr, JoinType, SqlExpr, WithAlias},
-    sql_schema::{SqlJoin, SqlOrderDirection, SqlSelect},
+use crate::{
+    core::{
+        join_monster_schema::FnValue,
+        schema::{AnyNode, BuilderType, ExtendsNode, Field, Node, Options, OrderDirection, Root},
+        shared_schema::{self, Column, ColumnRef, Join, JoinExpr, JoinType, SqlExpr, WithAlias},
+        sql_schema::{SqlJoin, SqlOrderDirection, SqlSelect},
+    },
+    error::format_serde_json_error,
 };
 
 fn resolve_node<'a>(any_node: &'a AnyNode, root: &'a Root) -> Result<&'a Node, String> {
@@ -46,44 +50,61 @@ pub fn build_sql_query(
 ) -> Result<String, String> {
     let doc = parse_gql(query)?;
 
-    if let Some(selection) = doc.definitions.first() {
-        if let Definition::Operation(op) = selection {
-            if let OperationDefinition::SelectionSet(selection_set) = op {
-                if let Some(Selection::Field(root_field)) = selection_set.items.first() {
-                    let node = metadata
-                        .0
-                        .values()
-                        .find(|node| node.field_name == root_field.name)
-                        .ok_or(format!(
-                            "no such field with field_name = {} in nodes",
-                            root_field.name
-                        ))?;
+    let result = std::panic::catch_unwind(|| {
+        if let Some(selection) = doc.definitions.first() {
+            if let Definition::Operation(op) = selection {
+                if let OperationDefinition::SelectionSet(selection_set) = op {
+                    if let Some(Selection::Field(root_field)) = selection_set.items.first() {
+                        let node = metadata
+                            .0
+                            .values()
+                            .find(|node| node.field_name == root_field.name)
+                            .ok_or_else(|| {
+                                format!(
+                                    "no such field with field_name = {} in nodes",
+                                    root_field.name
+                                )
+                            })?;
 
-                    let node = AnyNode::Node(node.clone());
-                    let sql_ast = build_sql_ast(
-                        node, root_field, &metadata, &context,
-                    )?;
-                    let sql = match options.map(|x| x.builder) {
-                        Some(BuilderType::Postgres) => {
-                            render_sql(sql_ast, sea_query::PostgresQueryBuilder)
-                        }
-                        Some(BuilderType::MySql) => {
-                            render_sql(sql_ast, sea_query::MysqlQueryBuilder)
-                        }
-                        Some(BuilderType::Sqlite) => {
-                            render_sql(sql_ast, sea_query::SqliteQueryBuilder)
-                        }
-                        None => render_sql(sql_ast, sea_query::PostgresQueryBuilder),
-                    };
-                    return Ok(sql);
+                        let node = AnyNode::Node(node.clone());
+                        let sql_ast = build_sql_ast(node, root_field, &metadata, &context)?;
+
+                        let sql = match options.map(|x| x.builder) {
+                            Some(BuilderType::Postgres) => {
+                                render_sql(sql_ast, sea_query::PostgresQueryBuilder)
+                            }
+                            Some(BuilderType::MySql) => {
+                                render_sql(sql_ast, sea_query::MysqlQueryBuilder)
+                            }
+                            Some(BuilderType::Sqlite) => {
+                                render_sql(sql_ast, sea_query::SqliteQueryBuilder)
+                            }
+                            None => render_sql(sql_ast, sea_query::PostgresQueryBuilder),
+                        };
+
+                        return Ok(sql);
+                    }
                 }
             }
         }
-    }
 
-    Err(String::from(
-        "Invalid query structure must have a query definition in query",
-    ))
+        Err(String::from(
+            "Invalid query structure: must have a query definition in query",
+        ))
+    });
+
+    match result {
+        Ok(Ok(sql)) => Ok(sql),
+        Ok(Err(err)) => Err(err),
+        Err(panic_err) => {
+            // This block is hit if any `unwrap()` or internal panic occurred
+            if let Some(serde_err) = panic_err.downcast_ref::<Error>() {
+                Err(format_serde_json_error(query, serde_err))
+            } else {
+                Err("An unexpected internal error occurred (panic)".to_string())
+            }
+        }
+    }
 }
 
 fn render_sql<T>(select: SqlSelect, builder: T) -> String
@@ -121,7 +142,7 @@ fn build_sql_ast<'a>(
                 let result: Result<(), String> = match &field_meta {
                     &Field::Column(column) => {
                         let col: Column = match column.clone() {
-                            Column::Expr(WithAlias { alias: None, data, }) => {
+                            Column::Expr(WithAlias { alias: None, data }) => {
                                 Column::Expr(WithAlias {
                                     alias: Some(alias.clone()),
                                     data,
@@ -136,8 +157,7 @@ fn build_sql_ast<'a>(
                                 table: Some(alias.clone()),
                                 column,
                             }),
-                            _ => column.clone()
-                            ,
+                            _ => column.clone(),
                         };
                         columns.push(col.into());
                         Ok(())

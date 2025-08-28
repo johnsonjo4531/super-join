@@ -12,6 +12,12 @@ The nice thing about having an intermediate metadata format is it could at some 
 
 Super-join is like join-monster only made in Rust and wasm (so it can be used literally anywhere that wasm can be used, which is pretty much anywhere.) One goal of super-join is it will hopefully 🤞 be compatible with join-monster's graphql extension metadata.
 
+
+## Background
+
+Super-join started as a question that floated in my mind for a long time, but it didn't actually start to come to fruition until I posed it to ChatGPT, "Would something like join-monster ever work well used by developers from js but written in wasm from rust?". With it's positive attitude towards it (who would've guessed 🤣) I decided to give it a whirl. It also helped give me a rough prototype to code against.
+
+
 ## License
 
 Copyright (c) 2025 John Johnson II
@@ -23,6 +29,6 @@ Licensed under either of
 
 at your option.
 
-## Background
+## Contribution
 
-Super-join started as a question that floated in my mind for a long time, but it didn't actually start to come to fruition until I posed it to ChatGPT, "Would something like join-monster ever work well used by developers from js but written in wasm from rust?". With it's positive attitude towards it (who would've guessed 🤣) I decided to give it a whirl. It also helped give me a rough prototype to code against.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
