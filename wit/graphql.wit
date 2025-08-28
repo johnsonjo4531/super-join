@@ -1,0 +1,62 @@
+package super-join:graphql;
+interface super-join {
+    record sql-expr {
+        column: column,
+        param: param,
+        literal: literal,
+        raw: string,
+    }
+    record column {
+        column: string,
+        table: string,
+        aliaAs: string,
+    }
+    record param {
+        param: string,
+    }
+    record literal {
+        literal: string,
+    }
+    record field {
+        column: column,
+        join: join,
+        where: string,
+        order-by: order-by,
+        limit: u64,
+    }
+    record order-by {
+        expr: sql-expr,
+        direction: sql-order-direction,
+    }
+    enum sql-order-direction {
+        asc,
+        desc,
+    }
+
+    enum join-type {
+        join,
+        cross-join,
+        inner-join,
+        left-join,
+        right-join,
+        full-outer-join,
+    }
+
+    record join {
+        on: sql-expr,
+        kind: join-type,
+    }
+    record node {
+        alias: string,
+        field-name: string,
+        table: string,
+        fields: list<field>,
+    }
+    type root-input = list<node>;
+}
+
+world graphql {
+  import super-join;
+  use super-join.{root-input};
+  export build-sql: func (query: string, root: root-input) -> string;
+}

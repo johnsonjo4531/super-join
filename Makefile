@@ -1,8 +1,11 @@
 go:
 	 cargo test --verbose
 
+build:
+	npm run build
+
 node:
-	wasm-pack build --release --target nodejs && npm i && npm run test
+	npm i && $(MAKE) build && npm run test
 
 deno:
 	wasm-pack build --release --target deno && deno test --allow-env --allow-read --unstable-sloppy-imports ./src-js/__deno__/**/*.test.ts

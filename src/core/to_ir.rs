@@ -3,7 +3,6 @@ use graphql_parser::schema::{Definition, Document, Type, TypeDefinition};
 use js_sys::Function;
 use serde::Deserialize;
 use std::collections::HashMap;
-use tsify::Tsify;
 
 use crate::core::join_monster_schema::{self, Extension, FnValue};
 use crate::core::schema::{ExtendsNode, Field as IRField, JoinInfo, Node, OrderBy, RootInput};
@@ -11,10 +10,10 @@ use crate::core::shared_schema::{
     Column, ColumnRef, IRParseError, Join, JoinExpr, JoinType, SqlExpr,
 };
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
+
 pub struct Extensions {
-    #[tsify(type = "Record<string, Extension>")]
+    // #[tsify(type = "Record<string, Extension>")]
     pub extensions: HashMap<String, Extension>,
 }
 

@@ -1,11 +1,9 @@
 use sea_query::{Expr, ExprTrait, IntoLikeExpr};
 use serde::{Deserialize, Serialize};
-use tsify::Tsify;
 
 use crate::core::join_monster_schema::FnValue;
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct ColumnRef {
     pub column: String,
     pub table: Option<String>,
@@ -22,15 +20,14 @@ impl From<String> for ColumnRef {
     }
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
+
 pub struct SqlParam {
     pub name: String,
     pub value: SqlValue,
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(tag = "sql_value", rename_all = "snake_case")]
 pub enum SqlValue {
     Int(Value<Option<i64>>),
@@ -40,8 +37,8 @@ pub enum SqlValue {
     // etc.
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
+
 pub struct Value<T> {
     pub value: T,
 }
@@ -66,50 +63,48 @@ impl From<&SqlValue> for sea_query::Value {
     }
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct BinaryExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct LikeExpr {
     pub left: Box<SqlExpr>,
     pub right: String,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct InExpr {
     pub left: Box<SqlExpr>,
     pub right: Vec<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct NotExpr {
     pub expr: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(tag = "column_type", rename_all = "snake_case")]
 pub enum Column {
     Expr(WithAlias<SqlExpr>),
     Data(ColumnRef),
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
+
 pub struct WithAlias<T> {
     pub alias: Option<String>,
     pub data: T,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "sql_expr_type", rename_all = "snake_case")]
 pub enum SqlExpr {
     /// e.g. "user.id"
@@ -138,43 +133,43 @@ pub enum SqlExpr {
     IsNotNull(IsNotNullExpr),
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct EqExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct NeqExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct GtExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct GteExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct LtExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct LteExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
@@ -182,28 +177,28 @@ pub struct LteExpr {
 
 // Logic
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct AndExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct OrExpr {
     pub left: Box<SqlExpr>,
     pub right: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct IsNullExpr {
     pub expr: Box<SqlExpr>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
-#[tsify(from_wasm_abi)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
 pub struct IsNotNullExpr {
     pub expr: Box<SqlExpr>,
 }
@@ -300,15 +295,14 @@ impl From<&SqlExpr> for sea_query::SimpleExpr {
     }
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
+
 pub struct BinaryOp<L, R> {
     pub left: L,
     pub right: R,
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum JoinType {
     Join,
@@ -332,20 +326,19 @@ impl From<&JoinType> for sea_query::JoinType {
     }
 }
 
-#[derive(Tsify, Deserialize, Serialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "join_type", rename_all = "snake_case")]
 pub enum JoinExpr {
-    #[tsify(
-        type = "{value: string | ((args: any, context: any) => {column: string, direction: 'asc' | 'desc' | 'ASC' | 'DESC'}[])}",
-        rename = "from_js"
-    )]
+    // #[tsify(
+    //     type = "{value: string | ((args: any, context: any) => {column: string, direction: 'asc' | 'desc' | 'ASC' | 'DESC'}[])}",
+    //     rename = "from_js"
+    // )]
     FromJs(Value<FnValue<String>>),
     Join(Join),
 }
 
-#[derive(Tsify, Deserialize, Serialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
+
 pub struct Join {
     pub on: SqlExpr,
     pub kind: JoinType,

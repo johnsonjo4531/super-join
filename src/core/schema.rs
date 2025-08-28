@@ -1,21 +1,17 @@
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
-use tsify::Tsify;
-use wasm_bindgen::prelude::*;
 
 use crate::core::{
     join_monster_schema,
     shared_schema::{Column, ColumnRef, JoinExpr},
 };
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
 pub struct Options {
     pub builder: BuilderType,
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Clone, Debug)]
 pub enum BuilderType {
     #[serde(rename = "postgres")]
     Postgres,
@@ -25,13 +21,11 @@ pub enum BuilderType {
     Sqlite,
 }
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
 pub struct RootInput(pub Vec<Node>);
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
-pub struct Root(#[tsify(type = "Record<string, Node>")] pub HashMap<String, Arc<Node>>);
+#[derive(Deserialize, Debug)]
+pub struct Root(pub HashMap<String, Arc<Node>>);
 
 impl From<Vec<Node>> for Root {
     fn from(values: Vec<Node>) -> Self {
@@ -43,8 +37,7 @@ impl From<Vec<Node>> for Root {
     }
 }
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
 pub enum AnyNode {
     #[serde(rename = "alias")]
     AliasNode(Arc<ExtendsNode>),
@@ -52,8 +45,7 @@ pub enum AnyNode {
     Node(Arc<Node>),
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct ExtendsNode {
     pub alias: String,
     pub field_name: String,
@@ -61,8 +53,7 @@ pub struct ExtendsNode {
     pub extends: String,
 }
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
 pub struct Node {
     /// The SuperJoin Identifier and SQL alias.
     pub alias: String,
@@ -71,12 +62,10 @@ pub struct Node {
     /// The SQL table name
     pub table: String,
     /// Metadata about how to fetch the fields from SQL
-    #[tsify(type = "Record<string, Field>")]
     pub fields: HashMap<String, Field>,
 }
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "field_type")]
 pub enum Field {
     #[serde(rename = "column")]
@@ -91,15 +80,13 @@ pub enum Field {
     Limit(u64),
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct OrderBy {
     pub expr: ColumnRef,
     pub direction: OrderDirection,
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "order_dir")]
 pub enum OrderDirection {
     Asc,
@@ -121,8 +108,7 @@ impl From<join_monster_schema::JoinMonsterOrderDirection> for OrderDirection {
     }
 }
 
-#[derive(Tsify, Deserialize, Clone, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct ColumnInfo {
     pub column: String,
     pub table: Option<String>,
@@ -143,8 +129,7 @@ impl From<&str> for ColumnInfo {
     }
 }
 
-#[derive(Tsify, Deserialize, Debug)]
-#[tsify(from_wasm_abi)]
+#[derive(Deserialize, Debug)]
 pub struct JoinInfo {
     /// The id of a root type
     pub extends: ExtendsNode,
