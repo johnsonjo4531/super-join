@@ -1,0 +1,16 @@
+package super-join:core;
+
+/// The main world export for super-join
+/// Using JSON strings for complex types to simplify migration
+world super-join {
+  export build-sql-query: func(
+    query: string,
+    metadata-json: string,
+    options-json: option<string>
+  ) -> result<string, string>;
+  
+  export hydrate-results: func(
+    rows-json: string,
+    metadata-json: string
+  ) -> result<string, string>;
+}
