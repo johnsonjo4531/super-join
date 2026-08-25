@@ -1,0 +1,13 @@
+[package]
+name = "super-join"
+version = "0.0.0"
+edition = "2024"
+authors = ["John Johnson <johnsonjo4531@gmail.com>"]
+description = "super-join is a wasm library for turning your graphql queries into SQL queries which solves the n+1 problem"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/johnsonjo4531/super-join"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]

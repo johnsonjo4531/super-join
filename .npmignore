@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# But don't ignore these
+!dist/
+!package.json
+!pkg/
+!README.md
+!LICENSE
