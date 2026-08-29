@@ -5,9 +5,27 @@
   "type": "module",
   "description": "super-join is a wasm library for turning your graphql queries into SQL queries which solves the n+1 problem",
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./graphql": {
+      "types": "./dist/graphql.d.ts",
+      "default": "./dist/graphql.js"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
   "scripts": {
     "pretest": "npm run build",
-    "build": "tsc"
+    "build": "tsc",
+    "build:wasm": "cargo component build --target wasm32-wasip1 && npx jco transpile target/wasm32-wasip1/debug/super_join.wasm -o pkg --name super_join",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "sql",
@@ -20,6 +38,21 @@
   ],
   "author": "John Johnson",
   "license": "MIT",
-  "devDependencies": {},
-  "peerDependencies": {}
+  "dependencies": {
+    "@bytecodealliance/preview2-shim": "^0.22.0"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "^1.32.1",
+    "@types/node": "^22.7.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "graphql": "^16.14.2"
+  },
+  "peerDependenciesMeta": {
+    "graphql": {
+      "optional": true
+    }
+  }
 }

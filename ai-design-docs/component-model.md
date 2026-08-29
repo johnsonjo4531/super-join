@@ -12,6 +12,14 @@ WIT input -> generated bindings -> Rust Compiler::compile -> generated bindings 
 
 It MUST NOT introduce separate compilation semantics, query planning, GraphQL interpretation, or SQL generation.
 
+## Build toolchain
+
+The component crate is built through a WIT-aware Component Model workflow. Its source WIT world defines the exported ABI; generated Rust bindings adapt that ABI to the native Rust core; the build produces a Wasm **Component** artifact.
+
+`cargo-component` with `wit-bindgen` is an appropriate initial toolchain. An equivalent supported Rust `wasm32-wasip2` Component Model workflow is acceptable only if it produces the same WIT-defined component contract and generated bindings. The exact command/version must be pinned in implementation build scripts once selected.
+
+Do **not** use `wasm-pack` as the component build or packaging mechanism. `wasm-pack` targets a different workflow: a raw Rust-generated Wasm module with `wasm-bindgen` JavaScript glue. Super-Join deliberately uses WIT as its stable ABI so the component is not defined by JavaScript interop and can be consumed by hosts besides TypeScript.
+
 ## Host and guest responsibilities
 
 | Party | Responsibilities |

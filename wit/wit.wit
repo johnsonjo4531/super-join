@@ -1,0 +1,322 @@
+// WIT interface for the super-join compiler component.
+//
+// This is the stable cross-language boundary. The Rust core implements it, and
+// any host (Rust, TypeScript, future languages) drives it through this contract.
+// Only serializable values cross the boundary; no closures, GraphQL objects,
+// context handles, or database connections.
+//
+// NOTE: wit-bindgen cannot express recursive types. The `expression` tree and the
+// query/selection graph are therefore serialized as *flattened* DAGs: a list of
+// nodes where the last node is the root, and every operand is referenced by its
+// index into that same list. For queries, all query nodes (root + nested) live in
+// `query.queries`; every referenced index must be *strictly less* than the
+// referencing index (i.e. the list is in topological order, root last).
+
+package super-join:compiler@0.1.0;
+
+interface compiler {
+    // =====================================================================
+    // Scalar values that may cross the boundary
+    // =====================================================================
+
+    // A scalar value supplied by a host. Values are always typed; untyped JSON is
+    // rejected at the boundary rather than silently stringified.
+    variant value {
+        null,
+        boolean(bool),
+        integer(s64),
+        float(f64),
+        text(string),
+        binary(list<u8>),
+    }
+
+    // Declared scalar type of a model field / parameter.
+    enum scalar-type {
+        null,
+        boolean,
+        int8,
+        int16,
+        int32,
+        int64,
+        uint8,
+        uint16,
+        uint32,
+        uint64,
+        float32,
+        float64,
+        decimal,
+        date,
+        time,
+        time-tz,
+        timestamp,
+        timestamp-tz,
+        uuid,
+        jsonb,
+    }
+
+    // =====================================================================
+    // Diagnostics
+    // =====================================================================
+
+    // Source location for a diagnostic, when available.
+    record source-location {
+        path: string,
+        line: u64,
+        column: u64,
+        length: u64,
+    }
+
+    // =====================================================================
+    // Identifiers (dotted, never raw SQL fragments)
+    // =====================================================================
+
+    // A dotted identifier expressed as ordered components (e.g. ["users","id"]).
+    // Physical identifiers are always components, never raw SQL.
+    record identifier {
+        components: list<string>,
+    }
+
+    // =====================================================================
+    // Model: declarative description of queryable data
+    // =====================================================================
+
+    // Metadata for one scalar field.
+    record field-metadata {
+        id: u64,
+        identifier: identifier,
+        data-type: scalar-type,
+        nullable: bool,
+        selectable: bool,
+    }
+
+    // Cardinality of a relation endpoint.
+    enum cardinality { one, many }
+
+    // Metadata for one relation between two entities.
+    record relation-metadata {
+        id: u64,
+        target: u64,
+        cardinality: cardinality,
+        // Flattened expression: last node is the root, operands are indices.
+        join: expression,
+    }
+
+    // Metadata for one root entity. `source` names the backing table(s).
+    record entity-metadata {
+        id: u64,
+        source: identifier,
+        fields: list<field-metadata>,
+        relations: list<relation-metadata>,
+    }
+
+    // The complete set of entities that make up a request model.
+    record model {
+        entities: list<entity-metadata>,
+    }
+
+    // =====================================================================
+    // Expression model: serializable, database-independent meaning
+    // =====================================================================
+    //
+    // Expressions are flattened into a list of `expr-node`s. The last node
+    // (`nodes[-1]`) is the root. Every operand references a node by its index into
+    // `nodes`, so operands must always precede their use (topological order).
+    // Values become parameters; identifiers resolve to columns. No SQL text
+    // appears here.
+
+    enum comparison-operator { eq, ne, lt, lte, gt, gte }
+    enum boolean-operator { and, or }
+    enum is-null-operator { is-null, is-not-null }
+
+    // A runtime value bound as a SQL parameter.
+    record parameter {
+        value: value,
+        data-type: scalar-type,
+    }
+
+    // A parent-scoped column reference (correlation).
+    record parent-column {
+        depth: u64,
+        field: u64,
+    }
+
+    // One node of a flattened expression tree.
+    record expr-node {
+        kind: expr-kind,
+        // Literal value (kind = parameter).
+        value: option<value>,
+        // Scalar type of a parameter value (kind = parameter).
+        data-type: option<scalar-type>,
+        // Operand indices into the enclosing `nodes` list.
+        //   compare:            [left, right]
+        //   boolean-and/or:     [term, term, ...]
+        //   not/is-null/is-not: [term]
+        //   in-list:            [term]
+        operands: list<u64>,
+        // Comparison operator (kind = compare).
+        compare-op: option<comparison-operator>,
+        // Column id (kind = column or parent-column).
+        column: option<u64>,
+        // Join depth (kind = parent-column).
+        depth: option<u64>,
+        // The RHS value list (kind = in-list).
+        values: list<parameter>,
+    }
+
+    enum expr-kind {
+        parameter,
+        column,
+        parent-column,
+        compare,
+        boolean-and,
+        boolean-or,
+        not,
+        is-null,
+        is-not-null,
+        in-list,
+    }
+
+    // The flattened expression: list of nodes, last one being the root.
+    record expression {
+        nodes: list<expr-node>,
+    }
+
+    enum sort-direction { asc, desc }
+    record order-by {
+        direction: sort-direction,
+        field: u64,
+    }
+
+    // =====================================================================
+    // Query / selection graph: serialized as a flat list of nodes
+    // =====================================================================
+    //
+    // All query nodes (the root plus every nested query) live in
+    // `query.queries`. Each `query-node` may reference deeper queries by index via
+    // `nested`, and each `selection-node` references a nested query via
+    // `query-ref`. Every referenced index must be strictly less than the
+    // referencing index, so the list is in topological order with the root last.
+
+    record query {
+        // Index of the root query within `queries` (always the last element).
+        root: u64,
+        queries: list<query-node>,
+    }
+
+    record query-node {
+        entity: u64,
+        selection: list<selection-node>,
+        // Flattened predicate; last node is the root. Empty == no predicate.
+        predicate: list<expr-node>,
+        order-by: list<order-by>,
+        limit: option<u64>,
+        offset: option<u64>,
+        path: list<string>,
+        // Indices (into `query.queries`) of directly-nested queries.
+        nested: list<u64>,
+    }
+
+    record selection-node {
+        kind: selection-kind,
+        // For field selections.
+        field: option<u64>,
+        // For relation selections.
+        relation: option<u64>,
+        output-key: option<string>,
+        path: list<string>,
+        // For relation selections: index into `query.queries`.
+        query-ref: option<u64>,
+    }
+
+    enum selection-kind {
+        field,
+        relation,
+    }
+
+    // =====================================================================
+    // Result: the SQL artifact (not executed here)
+    // =====================================================================
+
+    // One selected output column and how it maps to a logical field.
+    record selected-field {
+        alias: string,
+        field: u64,
+        path: list<string>,
+    }
+
+    // How selected rows correspond to the requested entities.
+    enum result-shape-kind { flat, nested, json }
+
+    // Describes how result rows map to requested entities and nested fields.
+    record result-shape {
+        kind: result-shape-kind,
+        rows: list<selected-field>,
+    }
+
+    // The complete compiler output handed to an application-owned driver.
+    record sql-artifact {
+        sql: string,
+        parameters: list<parameter>,
+        dialect: sql-dialect,
+        selected-fields: list<selected-field>,
+        result-shape: result-shape,
+    }
+
+    // Supported SQL dialects.
+    enum sql-dialect {
+        postgres,
+        mysql,
+        sqlite,
+        mssql,
+        other,
+    }
+
+    // Successful compilation result.
+    record compiler-result {
+        artifact: sql-artifact,
+    }
+
+    // =====================================================================
+    // Errors: typed, safe to render in an application
+    // =====================================================================
+
+    enum error-code {
+        invalid-request,
+        invalid-model,
+        unknown-field,
+        unknown-relation,
+        invalid-expression,
+        unsupported-feature,
+        unsupported-dialect,
+    }
+
+    // Expected failures return this typed result. Traps are reserved for defects.
+    record compiler-error {
+        code: error-code,
+        message: string,
+        path: option<string>,
+        source: option<source-location>,
+    }
+
+    // The full request handed to the compiler.
+    record compiler-request {
+        model: model,
+        query: query,
+        options: compile-options,
+    }
+
+    // Per-request compiler options.
+    record compile-options {
+        dialect: sql-dialect,
+    }
+
+    // The stable exported operation. One request yields exactly one result
+    // (either a successful artifact or a structured error).
+    compile: func(
+        request: compiler-request,
+    ) -> result<compiler-result, compiler-error>;
+}
+
+world superjoin {
+    export compiler;
+}

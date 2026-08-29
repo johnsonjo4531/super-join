@@ -61,6 +61,8 @@ Dependencies flow downward. In particular, GraphQL MUST NOT appear in the Rust c
 
 Vite and Vitest are build/test tooling adjacent to the TypeScript API. They MUST NOT be dependencies of the compiler core, WIT interface, or Wasm Component.
 
+Likewise, `wasm-pack` and its `wasm-bindgen`-oriented JavaScript packaging workflow are not part of this architecture. Super-Join's cross-language ABI is WIT and the Wasm Component Model, not a raw Wasm module plus generated JavaScript glue. The component build must use WIT/component tooling such as `cargo-component`/`wit-bindgen` or an equivalent supported `wasm32-wasip2` Rust workflow.
+
 ## Core invariants
 
 - Rust compilation is deterministic from `CompilerRequest` plus explicit compiler configuration.

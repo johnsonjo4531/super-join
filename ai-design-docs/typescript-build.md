@@ -78,6 +78,8 @@ Vite is not responsible for:
 - Generating `.d.ts` declarations.
 - Defining compiler semantics or executing SQL.
 
+The Rust/Wasm producer is a WIT-aware Component Model toolchain, initially expected to use `cargo-component`/`wit-bindgen` or an equivalent supported `wasm32-wasip2` workflow. It produces a Wasm Component artifact from the versioned WIT world. `wasm-pack` MUST NOT be used for this package: its `wasm-bindgen`-oriented raw-Wasm-plus-JavaScript-glue model is not Super-Join's WIT Component boundary.
+
 ## Build inputs and outputs
 
 The complete package build has two independent producers followed by one packaging step:
@@ -96,6 +98,8 @@ Wasm Component (.wasm)              Vite library build (JS)
 ```
 
 The Rust/WIT producer must complete before packaging, but it does not need to be invoked by Vite itself. A top-level orchestrator script is responsible for ordering these steps and failing the build if any required artifact is absent.
+
+The TypeScript loader must consume the output as a Component Model artifact through the selected host/runtime binding layer. It must not expect the `wasm-bindgen` initialization module that `wasm-pack` would generate.
 
 The staged publish directory MUST contain the component as a visible package file:
 
@@ -194,4 +198,3 @@ Before publishing, tests must verify:
 - A browser-specific loading strategy is not automatically a Node/server strategy; support must be documented and tested per host.
 - Bundling/minifying the component into JavaScript is not part of the initial package design.
 - A TypeScript query DSL remains a future frontend and must not influence this package's generic WIT contract.
-
