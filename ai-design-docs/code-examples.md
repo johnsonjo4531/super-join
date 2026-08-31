@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `examples/` directory holds small, complete applications that consume super-join the way a real product would. They exist to prove the public API is usable end-to-end (compile → run → hydrate) and to serve as copy-paste starting points. Examples are consumer code, not tests: they MUST NOT import from `src-js/`, `crates/`, or any internal path — only the published package surface (`super-join`, `super-join/graphql`).
+The `examples/` directory holds small, complete applications that consume super-join the way a real product would. They exist to prove the public API is usable end-to-end (compile → run → hydrate) and to serve as copy-paste starting points. Examples are consumer code, not tests: they MUST NOT import from `src-js/`, `crates/`, or any internal path — only the published package surface (`super-join`, `super-join/graphql`, `super-join/decorators`, `super-join/decorators/graphql`).
 
 ## Layout
 
@@ -12,6 +12,11 @@ examples/
     package.json        # private, "type": "module", super-join via file:../..
     README.md           # how to run, sample queries with expected output
     <source files>      # plain JavaScript, runnable with the Node LTS version below
+  decorators-graphql-js/ # TypeScript GraphQL server using the decorator pattern
+    package.json        # private, "type": "module", super-join via file:../..
+    tsconfig.json       # experimentalDecorators; tsc compiles src/ to dist/
+    README.md           # how to run, sample queries with expected output
+    src/*.ts            # TypeScript sources, compiled by the example's own build step
 ```
 
 One directory per example. Each is a standalone npm package (`"private": true`) so its dependencies never mix with the repository root's dev dependencies. Example names are kebab-case and describe the frontend being demonstrated (a future REST or drizzle example would be `examples/rest-js/`, etc.).
@@ -47,10 +52,10 @@ Rules:
 
 ## Runtime rules
 
-- Examples run on plain Node.js LTS (`node --version` >= 22.5) with no build step: plain `.js`, ESM, no TypeScript, no bundler. The repository's toolchain (cargo, jco, vite) is only needed to build super-join itself, never the example.
+- Examples run on plain Node.js LTS (`node --version` >= 22.5). JavaScript examples are plain `.js`, ESM, with no build step. TypeScript examples (only where the demonstrated pattern requires TypeScript, e.g. decorators) compile through their own `tsc` build before running; no bundler is used either way. The repository's toolchain (cargo, jco, vite) is only needed to build super-join itself, never the example.
 - Examples MUST be runnable offline after `npm install` and MUST NOT require external services (no Postgres/MySQL servers). Use embedded/in-memory storage — `node:sqlite` for SQL — so CI and laptops run identically.
 - Keep dependencies minimal: the frontend library being demonstrated plus super-join. No ORMs, no frameworks on top of the demonstrated path.
-- Every example README MUST include: run command, at least one sample request with its expected response, the generated SQL when illustrative, and a limitations section mirroring current super-join alpha limits (e.g. no `text` scalar yet — model string columns as non-selectable; nested ids need response aliases to avoid duplicate SQL aliases).
+- Every example README MUST include: run command, at least one sample request with its expected response, the generated SQL when illustrative, and a limitations section mirroring current super-join alpha limits (e.g. nested limit/offset rejected; nested ids need response aliases to avoid duplicate SQL aliases).
 
 ## Keeping examples in sync
 

@@ -783,6 +783,15 @@ fn records_nesting_identity_metadata_in_result_shape() {
         "sql: {}",
         artifact.sql()
     );
+    // The auto-selected identity column belongs to the child occurrence's
+    // field: its path ends with the physical field name, like any other row.
+    let auto = artifact
+        .result_shape
+        .rows
+        .iter()
+        .find(|c| c.alias == "__sj_identity_posts_id")
+        .expect("auto identity column");
+    assert_eq!(auto.path, vec!["posts".to_string(), "id".to_string()]);
 }
 
 #[test]
@@ -1187,4 +1196,92 @@ fn duplicate_table_aliases_get_numeric_suffixes() {
         .artifact;
     assert!(artifact.sql().contains("AS \"items\""), "sql: {}", artifact.sql());
     assert!(artifact.sql().contains("AS \"items_1\""), "sql: {}", artifact.sql());
+}
+
+#[test]
+fn supports_text_and_varchar_scalars() {
+    use super_join_core::expression::{
+        ComparisonOperator, Expression, Parameter, Value,
+    };
+
+    let model = Model {
+        entities: vec![EntityMetadata {
+            id: 0,
+            source: Identifier {
+                components: vec!["users".to_string()],
+            },
+            fields: vec![
+                FieldMetadata {
+                    id: 0,
+                    identifier: Identifier {
+                        components: vec!["id".to_string()],
+                    },
+                    type_: ScalarType::Int64,
+                    nullable: false,
+                    selectable: true,
+                    computed: None,
+                },
+                FieldMetadata {
+                    id: 1,
+                    identifier: Identifier {
+                        components: vec!["name".to_string()],
+                    },
+                    type_: ScalarType::Text,
+                    nullable: false,
+                    selectable: true,
+                    computed: None,
+                },
+                FieldMetadata {
+                    id: 2,
+                    identifier: Identifier {
+                        components: vec!["slug".to_string()],
+                    },
+                    type_: ScalarType::Varchar,
+                    nullable: false,
+                    selectable: true,
+                    computed: None,
+                },
+            ],
+            relations: vec![],
+            identity: vec![0],
+        }],
+    };
+    let root = QueryNode {
+        entity: 0,
+        selection: vec![Selection::Field {
+            field: 1,
+            output_key: "name".to_string(),
+            path: vec!["name".to_string()],
+        }],
+        predicate: Some(Expression::Compare {
+            operator: ComparisonOperator::Eq,
+            left: Box::new(Expression::Column(2)),
+            right: Box::new(Expression::Parameter(Parameter {
+                value: Value::Str("ada".to_string()),
+                type_: ScalarType::Varchar,
+            })),
+        }),
+        order_by: vec![],
+        limit: None,
+        offset: None,
+        path: vec![],
+    };
+
+    let artifact = compile(&super_join_core::CompilerRequest {
+        model,
+        root,
+        dialect: Dialect::Postgres,
+    })
+    .expect("text and varchar scalars must compile")
+    .artifact;
+
+    assert!(
+        artifact.sql().contains("\"users\".\"name\" AS \"name\""),
+        "sql: {}",
+        artifact.sql()
+    );
+    let params = artifact.parameters();
+    assert_eq!(params.len(), 1, "params: {params:?}");
+    assert!(matches!(params[0].type_, ScalarType::Varchar));
+    assert!(matches!(&params[0].value, Value::Str(s) if s == "ada"));
 }

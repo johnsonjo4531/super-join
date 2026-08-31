@@ -6,9 +6,9 @@
 // into a ready-to-use `GraphQLModel`: the model itself, the name→id resolvers,
 // and the per-field hooks/options. See ai-design-docs/typescript-decorators.md.
 
-import type { FieldOptions, GraphQLModel } from './graphql.js';
-import type { SqlDialect } from './wit.js';
-import { entityMetadataOf, modelFromClasses, type EntityClassMetadata } from './decorators.js';
+import type { FieldOptions, GraphQLModel } from '../graphql.js';
+import type { SqlDialect } from '../wit.js';
+import { entityMetadataOf, modelFromClasses, type EntityClassMetadata } from '../decorators.js';
 
 // Per-prototype store of `@GraphQLField` options keyed by property name.
 const GRAPHQL_FIELD_OPTIONS = new WeakMap<object, Map<string, FieldOptions>>();
@@ -59,17 +59,21 @@ export function graphQLModelFromClasses<TContext = unknown>(
         return model.entities[i]?.id;
       }
     }
-    // A relation field resolves to its target entity.
-    for (const cls of classes) {
-      const relation = entityMetadataOf(cls)?.relations.get(fieldName);
-      if (!relation) {
+    // A relation field resolves to its target entity. The assigned relation is
+    // found by class and declaration position (same rule as `relationForField`),
+    // because ids may have been auto-assigned during model generation.
+    for (let ci = 0; ci < classes.length; ci += 1) {
+      const meta = entityMetadataOf(classes[ci]);
+      if (!meta?.relations.has(fieldName)) {
         continue;
       }
-      const targetId = model.entities.find((entity) =>
-        entity.relations.some((rel) => rel.id === relation.id),
-      )?.id;
-      if (targetId !== undefined) {
-        return targetId;
+      let position = 0;
+      for (const relation of meta.relations.values()) {
+        const assigned = model.entities[ci]?.relations[position];
+        position += 1;
+        if (relation.property === fieldName) {
+          return assigned?.target;
+        }
       }
     }
     return undefined;

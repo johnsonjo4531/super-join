@@ -81,6 +81,8 @@ fn convert_scalar(t: WitScalarType) -> ScalarType {
         WitScalarType::TimestampTz => ScalarType::TimestampTz,
         WitScalarType::Uuid => ScalarType::Uuid,
         WitScalarType::Jsonb => ScalarType::Jsonb,
+        WitScalarType::Text => ScalarType::Text,
+        WitScalarType::Varchar => ScalarType::Varchar,
     }
 }
 
@@ -106,6 +108,8 @@ fn convert_scalar_to_wit(t: ScalarType) -> WitScalarType {
         ScalarType::TimestampTz => WitScalarType::TimestampTz,
         ScalarType::Uuid => WitScalarType::Uuid,
         ScalarType::Jsonb => WitScalarType::Jsonb,
+        ScalarType::Text => WitScalarType::Text,
+        ScalarType::Varchar => WitScalarType::Varchar,
     }
 }
 

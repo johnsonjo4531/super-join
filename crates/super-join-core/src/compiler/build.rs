@@ -533,10 +533,16 @@ fn ensure_identity_columns(
         }
         let source = lookup_column(model, entity_id, table_alias.to_string(), field_id)?;
         let alias = unique_identity_alias(table_alias, &source.column, plan);
+        // The output column belongs to this occurrence's field: append the
+        // physical field name so consumers can key it like any other column.
+        let mut column_path = path.to_vec();
+        if let Some(last) = source.column.components.last() {
+            column_path.push(last.clone());
+        }
         plan.columns.push(RelColumn {
             alias: alias.clone(),
             field_id,
-            path: path.to_vec(),
+            path: column_path,
             source: SelectSource::Column(source),
         });
         identity.push(IdentityColumn { field_id, alias });

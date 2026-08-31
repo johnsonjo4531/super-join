@@ -52,6 +52,8 @@ interface compiler {
         timestamp-tz,
         uuid,
         jsonb,
+        text,
+        varchar,
     }
 
     // =====================================================================

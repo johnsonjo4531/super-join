@@ -10,6 +10,30 @@ The goal of this library is to take a graphql query AST along with super-join's 
 
 The nice thing about having an intermediate metadata format is it could at some point be targeted from other source documents besides graphql service documents allowing for more possible ways to generate SQL.
 
+## Usage
+
+The main API is `superjoin`: compile and hydrate in one call, with a callback you use to run your own db driver against the compiled artifact:
+
+```ts
+import { superjoin } from "super-join";
+
+const users = await superjoin(request, async (artifact) => {
+  return db.query(artifact.sql, artifact.parameters);
+});
+```
+
+For GraphQL servers there is `superjoin.graphql`, which also translates the resolver's `ResolveInfo` for you:
+
+```ts
+import { superjoin } from "super-join";
+
+async function queryUsers(_args, context, info) {
+  return superjoin.graphql({ resolveInfo: info, context, model, execute });
+}
+```
+
+Model metadata is most ergonomically declared with the TypeScript decorators (`@Entity`, `@Field`, `@Relation` from `super-join/decorators`, GraphQL options via `super-join/decorators/graphql`); the lower-level pieces (`compile`, `graphqlToSQL`, `hydrate`) remain exported individually from `super-join` and `super-join/graphql` for hosts that want to drive each step separately. See the guides under `docs/super-join/` (and `examples/`) for complete walkthroughs.
+
 ## License
 
 Copyright (c) 2026 John Johnson II

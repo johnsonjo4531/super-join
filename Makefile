@@ -1,4 +1,4 @@
-.PHONY: docs example_graphql-js
+.PHONY: docs example_graphql-js example_decorators-graphql-js
 
 go:
 	$(MAKE) build && $(MAKE) test
@@ -28,6 +28,13 @@ example_graphql-js: build
 	rm -rf examples/graphql-js/node_modules/super-join
 	npm install --prefix examples/graphql-js
 	npm start --prefix examples/graphql-js
+
+# Same as above for the TypeScript decorator example; `npm start` compiles the
+# example's TypeScript (tsc) before running it.
+example_decorators-graphql-js: build
+	rm -rf examples/decorators-graphql-js/node_modules/super-join
+	npm install --prefix examples/decorators-graphql-js
+	npm start --prefix examples/decorators-graphql-js
 
 docs:
 	npm run docs

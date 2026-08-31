@@ -14,7 +14,8 @@ export default defineConfig({
       entry: {
         index: 'src-js/index.ts',
         graphql: 'src-js/graphql.ts',
-        'graphql-decorators': 'src-js/graphql-decorators.ts',
+        decorators: 'src-js/decorators.ts',
+        'decorators/graphql': 'src-js/decorators/graphql.ts',
       },
       formats: ['es'],
       fileName: (format, entryName) => `${entryName}.js`,

@@ -4,10 +4,12 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  ExpressionBuilder,
   compile,
   expr,
+  ExpressionBuilder,
   graphqlToSQL,
+  hydrate,
+  superjoin,
   SuperJoinError,
 } from '../src-js/index.js';
 
@@ -17,6 +19,9 @@ describe('public API surface', () => {
     expect(typeof graphqlToSQL).toBe('function');
     expect(typeof ExpressionBuilder).toBe('function');
     expect(typeof expr).toBe('object');
+    expect(typeof hydrate).toBe('function');
+    expect(typeof superjoin).toBe('function');
+    expect(typeof superjoin.graphql).toBe('function');
   });
 
   test('expr builder returns serializable specs', () => {

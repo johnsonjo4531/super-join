@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src-js/index.ts", "src-js/graphql.ts"],
+  "entryPoints": ["src-js/index.ts", "src-js/graphql.ts", "src-js/decorators.ts", "src-js/decorators/graphql.ts"],
   "tsconfig": "tsconfig.json",
   "readme": "docs/super-join/index.md",
   "plugin": ["@clean-jsdoc-theme/typedoc"],
@@ -17,7 +17,7 @@
       },
       {
         "title": "GitHub",
-        "link": "https://github.com/anomalyco/super-join",
+        "link": "https://github.com/johnsonjo4531/super-join",
         "icon": "simpleicons:github"
       }
     ]

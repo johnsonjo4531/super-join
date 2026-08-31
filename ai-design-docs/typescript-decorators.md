@@ -6,8 +6,8 @@ Super-Join's model metadata is plain data, which is verbose to author by hand. T
 
 ## Placement
 
-- Core decorators live in `src-js/decorators.ts` and are exported from the package root (`super-join`).
-- GraphQL-specific decorators live in `src-js/graphql-decorators.ts`, exported at `super-join/graphql/decorators`.
+- Core decorators live in `src-js/decorators.ts` and are exported at the package entry point `super-join/decorators`. They MUST NOT be re-exported from the package root.
+- GraphQL-specific decorators live in `src-js/decorators/graphql.ts`, exported at `super-join/decorators/graphql`.
 - The API requires `experimentalDecorators` (legacy decorator semantics) in the consumer's `tsconfig.json`.
 
 ## Metadata ownership

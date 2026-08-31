@@ -1,7 +1,7 @@
 ---
 title: Filtering, pagination, and hooks
-group: Guides
-order: 3
+group: Core API guide
+order: 8
 ---
 
 # Filtering, pagination, and hooks
@@ -132,7 +132,7 @@ const model: GraphQLModel = {
   ...superJoinModel,
   fields: {
     users: {
-      // WHERE users.active = $1
+      // WHERE users.active = $1 (field id 1n on the users entity)
       hooks: { where: ({ expr }) => expr.eq(expr.column(1n), expr.literal(true, "boolean")) },
     },
   },
@@ -155,7 +155,7 @@ Relation fields get hooks exactly like entity fields. Their `where` contribution
 fields: {
   posts: {
     hooks: {
-      // ON (... AND posts.published_at IS NOT NULL)
+      // ON (... AND posts.published_at IS NOT NULL) — field id 21n on posts
       where: ({ expr }) => expr.isNotNull(expr.column(21n)),
       // ORDER BY ... posts.created_at DESC (within each parent group)
       orderBy: () => [{ field: "created_at", direction: "desc" }],
@@ -163,6 +163,8 @@ fields: {
   },
 },
 ```
+
+The `orderBy` hook resolves its entries by GraphQL field name against the entity; `expr.column(...)` in a hook always takes the numeric model field id.
 
 ### The expression builder
 
@@ -223,4 +225,4 @@ Errors are safe to surface: they carry a request-relative `path` when available 
 ## Next steps
 
 - [result-shape-and-hydration.md](result-shape-and-hydration.md) — turn the artifact's flattened rows back into nested entities.
-- [decorators.md](decorators.md) — declare the model metadata with TypeScript decorators instead of hand-built objects.
+- The same topics with decorator-declared metadata: [decorator filtering, pagination, and hooks](../decorators/filtering-pagination-hooks.md).

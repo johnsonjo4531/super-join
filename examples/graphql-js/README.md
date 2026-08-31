@@ -25,21 +25,21 @@ super-join is linked from the source tree via the `file:../..` dependency in `pa
 
 ```sh
 curl -s localhost:4000/graphql \
-  -d '{"query": "{ users(limit: 10) { id posts { postId: id views } } }"}'
+  -d '{"query": "{ users(limit: 10) { id name posts { postId: id views } } }"}'
 ```
 
 ```json
 {"data":{"users":[
-  {"id":"1","posts":[{"postId":"101","views":5},{"postId":"102","views":9}]},
-  {"id":"2","posts":[{"postId":"103","views":7}]},
-  {"id":"3","posts":[{"postId":"104","views":3}]}
+  {"id":"1","name":"ada","posts":[{"postId":"101","views":5},{"postId":"102","views":9}]},
+  {"id":"2","name":"grace","posts":[{"postId":"103","views":7}]},
+  {"id":"3","name":"linus","posts":[{"postId":"104","views":3}]}
 ]}}
 ```
 
 One GraphQL query, one SQL statement:
 
 ```sql
-SELECT "users"."id" AS "id", "posts"."id" AS "postId", "posts"."views" AS "views"
+SELECT "users"."id" AS "id", "users"."name" AS "name", "posts"."id" AS "postId", "posts"."views" AS "views"
 FROM "users" AS "users"
 LEFT OUTER JOIN "posts" AS "posts" ON ("posts"."author_id" = "users"."id")
 LIMIT 10
@@ -73,11 +73,11 @@ curl -s localhost:4000/graphql -d '{"query": "{ user(id: \"abc\") { id } }"}'
 | --- | --- |
 | `server.js` | Model metadata, the `GraphQLModel` name→id bridge + hooks, resolvers that compile → run → hydrate, HTTP wiring |
 | `db.js` | The example-owned driver: in-memory SQLite, seeded tables, parameter unwrapping |
-| `hydrate.js` | Regroups the artifact's flattened rows into nested entities from `resultShape` |
+
+Rows are regrouped into nested entities by super-join's built-in `hydrate` (exported from `super-join`).
 
 ## Current limitations (super-join is alpha)
 
 - Query operations only; mutations/subscriptions are rejected.
-- No `text` scalar type yet, so string columns (`users.name`) are modeled but not selectable — they stay out of the GraphQL schema.
 - Nested relations cannot be paginated/ordered; paginate the root instead.
 - Selecting the same field name at two nesting levels without a response alias (e.g. `posts { id }` under `users { id }`) currently produces duplicate SQL aliases and garbled rows. Give nested ids an explicit alias (`postId: id`) — as the queries above do — until super-join disambiguates aliases itself.

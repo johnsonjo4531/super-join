@@ -1,0 +1,22 @@
+{
+  "name": "super-join-example-decorators-graphql-js",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A TypeScript GraphQL server (graphql-js + node:sqlite) whose model metadata is declared with super-join decorators and queried through the superjoin.graphql main API.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "npm run build && node dist/server.js"
+  },
+  "dependencies": {
+    "graphql": "^17.0.2",
+    "super-join": "file:../.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^5.6.3"
+  }
+}

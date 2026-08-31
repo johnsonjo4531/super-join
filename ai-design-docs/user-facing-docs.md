@@ -6,7 +6,7 @@ This document describes how the user-facing documentation in `./docs/super-join/
 
 The user-facing APIs are defined by the current signatures of the code, never by hand-maintained copies:
 
-- TypeScript API: the exported surface of `src-js/index.ts` and `src-js/graphql.ts`.
+- TypeScript API: the exported surface of `src-js/index.ts`, `src-js/graphql.ts`, `src-js/decorators.ts`, and `src-js/decorators/graphql.ts`.
 - Rust API: the public items of `crates/super-join-core` and `crates/super-join-component`.
 
 When a public signature changes, the documentation update MUST happen in the same change as the code. The reference pages themselves are generated; only prose and comments are hand-written.
@@ -17,10 +17,17 @@ When a public signature changes, the documentation update MUST happen in the sam
 docs/super-join/
   index.md            # human home page; also the typedoc site readme
   guides/             # hand-written Markdown prose: TypeScript tutorials and examples
-    getting-started.md
-    graphql-server.md              # build a graphql-js server whose queries compile through super-join
-    filtering-and-hooks.md         # arguments as filters, pagination/ordering, hooks, fragments, error codes
-    result-shape-and-hydration.md  # artifact anatomy and regrouping flattened rows into entities
+    getting-started.md              # shared step 0: install, superjoin main API, error basics
+    decorators/                     # the preferred guide series (TypeScript decorators)
+      intro.md                      # what choosing decorators means; why it is preferred
+      building-a-graphql-server.md  # decorator server via graphQLModelFromClasses + superjoin.graphql
+      filtering-pagination-hooks.md # @GraphQLField options, hooks on entities/relations, error codes
+      result-shape-and-hydration.md # what superjoin.graphql's hydration does under the hood
+    core-api/                       # the parallel series using hand-authored metadata
+      intro.md                      # what choosing the core API means; when to pick it
+      building-a-graphql-server.md  # complete graphql-js server with Model/GraphQLModel objects
+      filtering-pagination-hooks.md # argument options, hooks, expression builder, error codes
+      result-shape-and-hydration.md # artifact anatomy and regrouping flattened rows into entities
   api/                # GENERATED: typedoc + clean-jsdoc-theme site (TypeScript reference)
   rust-api/           # GENERATED: cargo doc output (Rust reference)
 ```
@@ -29,13 +36,17 @@ docs/super-join/
 
 ### Guide inventory
 
-The guide pages under `docs/super-join/guides/` form one tutorial series and MUST stay consistent with each other and with the current code:
+The guide pages under `docs/super-join/guides/` form two parallel tutorial series — one for the decorator pattern (preferred, listed first everywhere) and one for the core API — plus a shared getting-started page. They MUST stay consistent with each other and with the current code:
 
-1. `getting-started.md` — install, first compile, error basics.
-2. `graphql-server.md` — a complete simple GraphQL.js server: model metadata, name→id resolvers, resolver-level compile + driver execution + hydration, HTTP wiring, current limitations.
-3. `filtering-and-hooks.md` — field-level argument options, offset and cursor (Relay) pagination, the hook API including relation hooks, the expression builder and computed select expressions, fragments/directives, the full error-code table.
-4. `result-shape-and-hydration.md` — SQL artifact anatomy, identity aliases, and regrouping flattened rows into nested entities.
-5. `decorators.md` — declaring model metadata with TypeScript decorators (`@Entity`, `@Field`, `@Relation`, `@GraphQLField`) and generating a `GraphQLModel` from classes.
+1. `getting-started.md` — install, the `superjoin` main API (`superjoin` / `superjoin.graphql`), error basics, and how to choose between the two series.
+2. `decorators/intro.md` — what authoring metadata with decorators means and why it is the preferred pattern.
+3. `decorators/building-a-graphql-server.md` — a complete graphql-js server: decorated classes, `graphQLModelFromClasses`, resolvers calling `superjoin.graphql`, driver callback, HTTP wiring, current limitations.
+4. `decorators/filtering-pagination-hooks.md` — `@GraphQLField` argument options, hooks declared on entities/relations, the expression builder and computed select expressions, fragments/directives, the full error-code table.
+5. `decorators/result-shape-and-hydration.md` — SQL artifact anatomy, identity aliases, and what the built-in hydration does for the decorator pattern.
+6. `core-api/intro.md` — what hand-authoring metadata means and when to pick it over decorators.
+7. `core-api/building-a-graphql-server.md` — a complete graphql-js server: model metadata objects, name→id resolvers, resolver-level compile + driver execution + hydration, HTTP wiring, current limitations.
+8. `core-api/filtering-pagination-hooks.md` — field-level argument options, offset and cursor (Relay) pagination, the hook API including relation hooks, the expression builder and computed select expressions, fragments/directives, the full error-code table.
+9. `core-api/result-shape-and-hydration.md` — SQL artifact anatomy, identity aliases, the built-in hydrator, and writing a custom regrouping step.
 
 Every code example in these pages MUST be runnable against the current package (modulo placeholder driver code); when a public API change alters what an example shows, update the example in the same change.
 

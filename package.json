@@ -14,9 +14,13 @@
       "types": "./dist/graphql.d.ts",
       "default": "./dist/graphql.js"
     },
-    "./graphql/decorators": {
-      "types": "./dist/graphql-decorators.d.ts",
-      "default": "./dist/graphql-decorators.js"
+    "./decorators": {
+      "types": "./dist/decorators.d.ts",
+      "default": "./dist/decorators.js"
+    },
+    "./decorators/graphql": {
+      "types": "./dist/decorators/graphql.d.ts",
+      "default": "./dist/decorators/graphql.js"
     },
     "./wasm/super_join.wasm": "./dist/wasm/super_join.wasm"
   },
@@ -62,7 +66,7 @@
     "vitest": "^2.1.8"
   },
   "peerDependencies": {
-    "graphql": "^16.14.2"
+    "graphql": ">=16.14.2 <18"
   },
   "peerDependenciesMeta": {
     "graphql": {

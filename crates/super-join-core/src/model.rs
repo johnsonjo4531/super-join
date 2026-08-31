@@ -28,6 +28,8 @@ pub enum ScalarType {
     TimestampTz,
     Uuid,
     Jsonb,
+    Text,
+    Varchar,
 }
 
 impl ScalarType {
@@ -53,6 +55,8 @@ impl ScalarType {
             ScalarType::TimestampTz => "timestamp-tz",
             ScalarType::Uuid => "uuid",
             ScalarType::Jsonb => "jsonb",
+            ScalarType::Text => "text",
+            ScalarType::Varchar => "varchar",
         }
     }
 }

@@ -25,5 +25,7 @@ export type {
   RelationResolver,
   WhereHook,
 } from './graphql.js';
-export { Entity, Field, Relation, entityIdOf, entityMetadataOf, modelFromClasses } from './decorators.js';
-export type { EntityOptions, EntityClassMetadata, FieldOptions, RelationOptions } from './decorators.js';
+export { superjoin } from './superjoin.js';
+export type { ArtifactExecutor, DriverRow, SuperJoinOptions } from './superjoin.js';
+export { hydrate } from './hydration.js';
+export type { HydratedEntity } from './hydration.js';

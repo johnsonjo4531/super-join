@@ -1,4 +1,4 @@
-// Decorator API tests (src-js/decorators.ts + src-js/graphql-decorators.ts).
+// Decorator API tests (src-js/decorators.ts + src-js/decorators/graphql.ts).
 //
 // Uses legacy TypeScript decorators (experimentalDecorators) to attach model
 // metadata to classes, then asserts on the generated Model / GraphQLModel.
@@ -6,7 +6,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { Entity, Field, Relation, entityIdOf, entityMetadataOf, modelFromClasses } from '../src-js/decorators.js';
-import { GraphQLField, graphQLModelFromClasses } from '../src-js/graphql-decorators.js';
+import { GraphQLField, graphQLModelFromClasses } from '../src-js/decorators/graphql.js';
 import { expr } from '../src-js/expressions.js';
 
 @Entity({ id: 0n, source: ['public', 'users'] })
@@ -127,6 +127,13 @@ describe('graphQLModelFromClasses', () => {
     expect(gql.fields?.name?.pagination).toBe('cursor');
     // Relation hooks land on the relation field.
     expect(gql.fields?.tags?.hooks?.orderBy).toBeDefined();
+  });
+
+  test('a relation field resolves to its target entity (auto ids included)', () => {
+    const gql = graphQLModelFromClasses([Member, Tag], { dialect: 'postgres' });
+    // `tags` has an auto-assigned relation id; the fallback must still find
+    // the target entity through class/declaration position.
+    expect(gql.entityForField?.('tags')).toBe(21n);
   });
 
   test('entity hooks land under the class name', () => {

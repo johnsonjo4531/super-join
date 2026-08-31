@@ -43,6 +43,10 @@ try {
     'package/dist/index.d.ts',
     'package/dist/graphql.js',
     'package/dist/graphql.d.ts',
+    'package/dist/decorators.js',
+    'package/dist/decorators.d.ts',
+    'package/dist/decorators/graphql.js',
+    'package/dist/decorators/graphql.d.ts',
     'package/dist/wasm/super_join.wasm',
     'package/dist/pkg/super_join.js',
     'package/dist/pkg/super_join.core.wasm',
@@ -161,9 +165,11 @@ export function kind() { return typeof graphqlToSQL; }
   writeFileSync(
     declConsumer,
     `
-import { compile, expr } from 'super-join';
+import { compile, expr, superjoin, hydrate } from 'super-join';
 import { graphqlToSQL } from 'super-join/graphql';
-export const kinds = [typeof compile, typeof expr, typeof graphqlToSQL];
+import { Entity, Field, Relation, entityIdOf, entityMetadataOf, modelFromClasses } from 'super-join/decorators';
+import { GraphQLField, graphQLModelFromClasses } from 'super-join/decorators/graphql';
+export const kinds = [typeof compile, typeof expr, typeof superjoin, typeof hydrate, typeof graphqlToSQL, typeof Entity, typeof Field, typeof Relation, typeof entityIdOf, typeof entityMetadataOf, typeof modelFromClasses, typeof GraphQLField, typeof graphQLModelFromClasses];
 `,
   );
   try {
@@ -172,9 +178,9 @@ export const kinds = [typeof compile, typeof expr, typeof graphqlToSQL];
       ['--noEmit', '--strict', '--target', 'es2022', '--module', 'nodenext', '--moduleResolution', 'nodenext', declConsumer],
       { cwd: join(work, 'extracted'), encoding: 'utf8' },
     );
-    check('declarations resolve for both entry points', true);
+    check('declarations resolve for all entry points', true);
   } catch (error) {
-    check('declarations resolve for both entry points', false, error.stderr ?? String(error));
+    check('declarations resolve for all entry points', false, error.stderr ?? String(error));
   }
 } finally {
   if (failures === 0) {

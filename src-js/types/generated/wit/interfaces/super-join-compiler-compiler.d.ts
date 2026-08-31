@@ -78,8 +78,12 @@ export interface ValueBinary {
  * ## `"uuid"`
  * 
  * ## `"jsonb"`
+ * 
+ * ## `"text"`
+ * 
+ * ## `"varchar"`
  */
-export type ScalarType = 'null' | 'boolean' | 'int8' | 'int16' | 'int32' | 'int64' | 'uint8' | 'uint16' | 'uint32' | 'uint64' | 'float32' | 'float64' | 'decimal' | 'date' | 'time' | 'time-tz' | 'timestamp' | 'timestamp-tz' | 'uuid' | 'jsonb';
+export type ScalarType = 'null' | 'boolean' | 'int8' | 'int16' | 'int32' | 'int64' | 'uint8' | 'uint16' | 'uint32' | 'uint64' | 'float32' | 'float64' | 'decimal' | 'date' | 'time' | 'time-tz' | 'timestamp' | 'timestamp-tz' | 'uuid' | 'jsonb' | 'text' | 'varchar';
 /**
  * =====================================================================
  * Diagnostics

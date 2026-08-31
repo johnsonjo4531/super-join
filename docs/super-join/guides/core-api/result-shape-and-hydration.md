@@ -1,12 +1,12 @@
 ---
 title: Result shape and hydration
-group: Guides
-order: 4
+group: Core API guide
+order: 9
 ---
 
 # Result shape and hydration
 
-A compiled artifact returns one flat SQL result set even when the GraphQL query nests relations. The parent row repeats for every child row. Hydration is the step that regroups those flattened rows into nested entities before you return them to GraphQL.js. Super-Join describes how rows regroup; it does not hydrate for you (yet).
+A compiled artifact returns one flat SQL result set even when the GraphQL query nests relations. The parent row repeats for every child row. Hydration is the step that regroups those flattened rows into nested entities before you return them to GraphQL.js. Super-Join describes how rows regroup (`artifact.resultShape`) and ships a general hydrator; `superjoin()` runs it for you when you use the main API.
 
 ## Anatomy of an artifact
 
@@ -69,44 +69,14 @@ SELECT "users"."id" AS "id", "posts"."views" AS "views", "posts"."id" AS "__sj_i
 
 Auto aliases are never part of the GraphQL response; they exist only to make rows regroupable. Prefer selecting ids with explicit aliases when you can — it keeps output names unique across nesting levels.
 
-## A one-level hydrator
+## The built-in hydrator
 
-The following groups flattened rows for a single nesting level, driving everything from `resultShape` rather than hard-coded column names:
+`hydrate(rows, artifact)` is exported from `super-join` and handles any result shape: a `flat` shape returns the rows unchanged; nested shapes of any depth regroup parents and children purely from `resultShape` metadata — no hard-coded column names. Children with a null identity stay empty lists.
 
-```js
-function hydrate(rows, artifact) {
-  if (artifact.resultShape.kind === "flat") return rows;
-  const shape = artifact.resultShape;
-  const level = shape.nesting[0];
-  const relName = level.path[level.path.length - 1];            // "posts"
-  const parentKey = level.parentIdentity[0].alias;              // "id"
-  const childKey = level.childIdentity[0].alias;                // "postId" or "__sj_identity_posts_id"
-  const rootFields = shape.rows.filter((f) => f.path.length === 2);
-  const childFields = shape.rows.filter((f) => f.path.length > 2);
+```ts
+import { hydrate } from "super-join";
 
-  const parents = new Map();
-  for (const row of rows) {
-    let parent = parents.get(row[parentKey]);
-    if (!parent) {
-      parent = Object.fromEntries(
-        rootFields.map((f) => [f.path[f.path.length - 1], row[f.alias]]),
-      );
-      parent[relName] = [];
-      parent.__children = new Map();
-      parents.set(row[parentKey], parent);
-    }
-    const cid = row[childKey];
-    if (cid === null || cid === undefined) continue;           // LEFT JOIN miss: no child
-    if (!parent.__children.has(cid)) {
-      const child = Object.fromEntries(
-        childFields.map((f) => [f.path[f.path.length - 1], row[f.alias]]),
-      );
-      parent.__children.set(cid, child);
-      parent[relName].push(child);
-    }
-  }
-  return [...parents.values()].map(({ __children, ...rest }) => rest);
-}
+const entities = hydrate(rows, artifact); // plain objects keyed by GraphQL field name
 ```
 
 Keying hydrated objects by the last path component (the GraphQL field name) rather than the SQL alias is what makes response aliases work: `postId` arrives as a column, but `Post.id` resolves from `id`. Extra keys such as auto-selected identity columns are simply ignored by GraphQL.js's default resolver.
@@ -132,17 +102,15 @@ the hydrator returns one user with two posts, and the GraphQL response is:
 }
 ```
 
-## Deeper nesting
+## Writing your own hydrator
 
-`resultShape.nesting` carries one entry per relation occurrence, ordered root-to-leaf, and each entry's `path` is the full GraphQL path. A general hydrator walks `nesting` from the deepest level upward: group rows by the concatenation of identity aliases seen so far, attach each child group under its parent's bucket, then strip auto aliases. The one-level function above is that algorithm with `levels = 1`.
-
-Keep in mind what the compiler already guarantees for you:
+If you need custom output shapes, drive the regrouping from `resultShape` yourself. `resultShape.nesting` carries one entry per relation occurrence, ordered root-to-leaf, and each entry's `path` is the full GraphQL path. A general algorithm walks `nesting` outermost-first: group rows by the concatenation of identity aliases seen so far, attach each child group under its parent's bucket, then drop helper columns. Key guarantees the compiler provides:
 
 - Parent rows repeat exactly once per distinct child path; dedupe by identity, never by row equality.
 - A `null` child identity column means "this parent had no child" — emit an empty list, not a null entry.
-- Ordering within a nested relation is rejected at compile time, so children come back in join order; sort them yourself if you need a specific order.
+- Nested ordering is preserved in the SQL (children come back sorted within each parent group); see [filtering-pagination-hooks.md](filtering-pagination-hooks.md#ordering-arguments).
 
 ## See also
 
-- [graphql-server.md](graphql-server.md) — the full server this hydration step plugs into.
-- [filtering-and-hooks.md](filtering-and-hooks.md) — error codes to handle while compiling.
+- [building-a-graphql-server.md](building-a-graphql-server.md) — the full server this hydration step plugs into.
+- [filtering-pagination-hooks.md](filtering-pagination-hooks.md) — error codes to handle while compiling.

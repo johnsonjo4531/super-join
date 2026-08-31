@@ -6,7 +6,7 @@ order: 1
 
 # Getting started
 
-Super-Join compiles a GraphQL query (plus model metadata) into a parameterized SQL artifact. It never executes SQL — your application owns the driver.
+Super-Join compiles a nested data request — initially GraphQL — into a parameterized SQL artifact, runs it through your own driver callback, and hydrates the flattened rows back into entities. It never executes SQL itself — your application owns the driver.
 
 ## Install
 
@@ -14,42 +14,37 @@ Super-Join compiles a GraphQL query (plus model metadata) into a parameterized S
 npm install super-join graphql
 ```
 
-`graphql` is an optional peer dependency, required only for the GraphQL frontend entry point.
+`graphql` is an optional peer dependency, required only for the GraphQL entry point.
 
-## Compile a GraphQL query to SQL
+## The main API: `superjoin`
 
-Build a `GraphQLModel` from your model metadata, hand it (plus the resolver info and your GraphQL server's context) to `graphqlToSQL`, then compile the resulting request through the Wasm component:
-
-```ts
-import { graphqlToSQL } from "super-join/graphql";
-import { compile } from "super-join";
-
-const request = await graphqlToSQL({ resolveInfo, context, model });
-const artifact = await compile(request);
-
-// artifact.sql is parameterized text; run it with your own driver.
-await db.query(artifact.sql, artifact.parameters);
-```
-
-The `model` bridges GraphQL names to model ids and may carry hooks; `context` is the GraphQL server's own resolver context, handed to hooks but never sent to the compiler:
+`superjoin` encompasses compile and hydrate in one call. You provide a callback that you call your db driver with; super-join hands it the compiled artifact and returns hydrated entities:
 
 ```ts
-import type { GraphQLModel } from "super-join/graphql";
+import { superjoin } from "super-join";
 
-const model: GraphQLModel = {
-  model, // entities, fields, relations (see the API reference)
-  dialect: "postgres",
-  entityForField: (fieldName) => (fieldName === "users" ? 0n : undefined),
-  fieldForEntity: (entityId, fieldName) =>
-    fieldName === "id" ? 0n : fieldName === "name" ? 1n : undefined,
-  hooks: {
-    users: {
-      where: ({ args, expr }) =>
-        args.active === true ? expr.eq("active", true) : undefined,
-    },
-  },
-};
+const users = await superjoin(request, async (artifact) => {
+  // artifact.sql is parameterized text; run it with your own driver.
+  return db.query(artifact.sql, artifact.parameters);
+});
 ```
+
+For GraphQL servers there is a GraphQL-shaped front of the same pipeline — `superjoin.graphql` translates a resolver's `ResolveInfo`, compiles, calls your driver callback, and hydrates:
+
+```ts
+import { superjoin } from "super-join";
+
+async function queryUsers(_args, context, info) {
+  return superjoin.graphql({ resolveInfo: info, context, model, execute });
+}
+```
+
+## Choosing a guide
+
+Super-Join ships two first-class ways to author the model metadata it compiles against. Both guides walk the same three steps (building a GraphQL server; filtering, pagination, and hooks) plus result shape and hydration:
+
+- **[Decorator guide](decorators/intro.md)** — *the preferred pattern*. Declare entities, fields, and relations as TypeScript classes with `@Entity`, `@Field`, and `@Relation`; generate the metadata from them.
+- **[Core API guide](core-api/intro.md)** — hand-author the serializable model objects directly for full control, no decorators required.
 
 ## Errors
 
@@ -57,6 +52,5 @@ Every boundary failure is a structured `SuperJoinError` with a stable `code` (`i
 
 ## Next steps
 
-- Follow the [GraphQL server guide](graphql-server.md) to build a complete graphql-js server around this flow.
 - Browse the TypeScript API reference in the sidebar for every exported symbol.
 - Rust embedders: use `super-join-core` directly and read its rustdoc pages (`cargo doc`, served from `docs/super-join/rust-api/index.html`).

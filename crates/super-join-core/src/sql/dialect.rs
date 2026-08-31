@@ -43,7 +43,9 @@ impl Dialect {
             | ScalarType::Timestamp
             | ScalarType::TimestampTz
             | ScalarType::Uuid
-            | ScalarType::Jsonb => true,
+            | ScalarType::Jsonb
+            | ScalarType::Text
+            | ScalarType::Varchar => true,
         }
     }
 

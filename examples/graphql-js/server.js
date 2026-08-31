@@ -2,10 +2,10 @@
 // one parameterized SQL statement — no n+1. The pieces:
 //
 //   graphql-js (schema + execution)
-//     -> super-join/graphql  (ResolveInfo -> CompilerRequest, hooks run here)
-//     -> super-join          (CompilerRequest -> SQL artifact via the Wasm component)
-//     -> node:sqlite         (YOUR driver; super-join never connects)
-//     -> hydrate.js          (flattened rows -> nested entities)
+//     -> super-join/graphql        (ResolveInfo -> CompilerRequest, hooks run here)
+//     -> super-join                (compile -> SQL artifact via the Wasm component)
+//     -> node:sqlite               (YOUR driver; super-join never connects)
+//     -> hydrate from super-join   (flattened rows -> nested entities)
 //
 // Run it from the repository root with `make example_graphql-js`, or here with
 // `npm start`. Then try the curl examples in this folder's README.md.
@@ -13,10 +13,9 @@
 import { createServer } from 'node:http';
 import { buildSchema, graphql } from 'graphql';
 import { graphqlToSQL } from 'super-join/graphql';
-import { compile, SuperJoinError } from 'super-join';
+import { compile, hydrate, SuperJoinError } from 'super-join';
 
 import { openDatabase, toDriverValue } from './db.js';
-import { hydrate } from './hydrate.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 const db = openDatabase();
@@ -30,6 +29,7 @@ const db = openDatabase();
 const USER_ENTITY_ID = 0n;
 const POST_ENTITY_ID = 1n;
 const USER_ID = 0n;
+const USER_NAME = 1n;
 const POST_ID = 2n;
 const POST_AUTHOR_ID = 3n;
 const POST_VIEWS = 4n;
@@ -56,6 +56,8 @@ const sjModel = {
       source: { components: ['users'] }, // FROM "users"
       fields: [
         { id: USER_ID, identifier: { components: ['id'] }, dataType: 'int64', nullable: false, selectable: true },
+        // `text` is a first-class scalar type: string columns are selectable.
+        { id: USER_NAME, identifier: { components: ['name'] }, dataType: 'text', nullable: false, selectable: true },
       ],
       relations: [
         {
@@ -114,6 +116,8 @@ const superJoinModel = {
       switch (fieldName) {
         case 'id':
           return USER_ID;
+        case 'name':
+          return USER_NAME;
         default:
           return undefined;
       }
@@ -183,7 +187,7 @@ async function queryUser(_args, context, info) {
 
 const schema = buildSchema(`
   type Post { id: ID! views: Int! }
-  type User { id: ID! posts: [Post!]! }
+  type User { id: ID! name: String! posts: [Post!]! }
   type Query { users(limit: Int, offset: Int, orderBy: [String!]): [User!]!, user(id: ID!): User }
 `);
 
@@ -229,5 +233,5 @@ const server = createServer(async (request, response) => {
 
 server.listen(PORT, () => {
   console.log(`super-join graphql-js example listening on http://localhost:${PORT}`);
-  console.log('try: curl -s localhost:' + PORT + '/graphql -d \'{"query":"{ users(limit: 10) { id posts { postId: id views } } }"}\'');
+  console.log('try: curl -s localhost:' + PORT + '/graphql -d \'{"query":"{ users(limit: 10) { id name posts { postId: id views } } }"}\'');
 });
