@@ -1,0 +1,25 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src-js/index.ts", "src-js/graphql.ts"],
+  "tsconfig": "tsconfig.json",
+  "readme": "docs/super-join/index.md",
+  "plugin": ["@clean-jsdoc-theme/typedoc"],
+  "outputs": [{ "name": "clean-jsdoc-theme", "path": "docs/super-join/api" }],
+  "cleanJsdocTheme": {
+    "siteName": "Super-Join",
+    "docs": "./docs/super-join/guides",
+    "docGroups": ["Guides"],
+    "menu": [
+      {
+        "title": "Rust API",
+        "link": "/rust-api/index.html",
+        "icon": "lucide:cog"
+      },
+      {
+        "title": "GitHub",
+        "link": "https://github.com/anomalyco/super-join",
+        "icon": "simpleicons:github"
+      }
+    ]
+  }
+}

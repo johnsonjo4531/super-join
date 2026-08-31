@@ -1,0 +1,10 @@
+[package]
+name = "super-join-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "The canonical super-join compiler core: semantic IR -> relational IR -> SQL artifact, with no Wasm/JS dependency."
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

@@ -9,15 +9,16 @@ import {
   Kind,
   parse,
   type FragmentDefinitionNode,
+  type GraphQLResolveInfo,
   type OperationDefinitionNode,
 } from "graphql";
 
-import { type EntityMetadata, type Model, model } from "./model.js";
-import type { GraphQLContext, GraphQLResolveInfo } from "../../src-js/wit.js";
+import { type Model, model } from "./model.js";
+import type { GraphQLModel } from "../../src-js/graphql.js";
 
-export function makeContext(
-  overrides: Partial<GraphQLContext> = {},
-): GraphQLContext {
+export function makeModel(
+  overrides: Partial<GraphQLModel> = {},
+): GraphQLModel {
   const resolvers = {
     entityForField: (fieldName: string): bigint | undefined => {
       switch (fieldName) {
@@ -66,9 +67,7 @@ export function makeContext(
 }
 
 /** A model with one non-selectable field, for the selectability rule. */
-export function modelWithNonSelectable(): EntityMetadata["source"] extends never
-  ? EntityMetadata
-  : EntityMetadata {
+export function modelWithNonSelectable(): Model {
   const clone: Model = {
     entities: [
       {
@@ -78,8 +77,7 @@ export function modelWithNonSelectable(): EntityMetadata["source"] extends never
           {
             id: 9n,
             identifier: { components: ["password"] },
-            name: "password",
-            type: "text",
+            dataType: "int64",
             nullable: false,
             selectable: false,
           },
@@ -92,7 +90,6 @@ export function modelWithNonSelectable(): EntityMetadata["source"] extends never
 
 export interface FakeResolveInfoArgs {
   query: string;
-  context: GraphQLContext;
   fieldName: string;
   parentType: { name: string };
   returnType: { name: string };

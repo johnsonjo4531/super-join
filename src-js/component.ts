@@ -34,10 +34,19 @@ export function resetComponentLoaderForTesting(): void {
 const effectiveLoader: ComponentLoader = async () => (currentLoader ? currentLoader() : defaultComponentLoader());
 
 /**
- * Default loader: imports the self-contained transpiled glue from
- * `../pkg/super_join.js` (which base64-embeds the core wasm and handles WASI).
- * It detects unsupported hosts (e.g. a browser without WASI) and throws a clear
- * error instead of crashing inside the wasm loader.
+ * Glue module candidates, in resolution order. `./pkg/...` matches the staged
+ * package layout (`dist/index.js` next to `dist/pkg/super_join.js`);
+ * `../pkg/...` matches the source-tree layout used by tests and development.
+ * The glue is produced by `jco transpile` and loads the component's wasm from
+ * disk beside it — the component is never bundled into JavaScript.
+ */
+const GLUE_CANDIDATES = ['./pkg/super_join.js', '../pkg/super_join.js'];
+
+/**
+ * Default loader: imports the transpiled jco glue (which reads the component
+ * wasm from disk and wires WASI through @bytecodealliance/preview2-shim).
+ * Supported hosts: Node.js with the preview2 shim available; a browser without
+ * WASI support reports a structured initialization error instead of crashing.
  */
 export async function defaultComponentLoader(): Promise<CompiledComponent> {
   if (typeof process === 'undefined' || process.versions?.node === undefined) {
@@ -47,10 +56,26 @@ export async function defaultComponentLoader(): Promise<CompiledComponent> {
     );
   }
 
-  const glue = (await import(/* webpackIgnore: true */ '../pkg/super_join.js')) as unknown as {
-    compiler: { compile(request: CompilerRequest): CompilerResult };
+  let glue: unknown;
+  let lastError: unknown;
+  for (const candidate of GLUE_CANDIDATES) {
+    try {
+      glue = await import(/* @vite-ignore */ /* webpackIgnore: true */ candidate);
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!glue) {
+    const detail = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new SuperJoinError(
+      'unsupported-dialect',
+      `the super-join component artifact is unavailable (looked for ${GLUE_CANDIDATES.join(', ')}): ${detail}`,
+    );
+  }
+  const { compiler } = glue as unknown as {
+    compiler?: { compile(request: CompilerRequest): CompilerResult };
   };
-  const { compiler } = glue;
   if (!compiler || typeof compiler.compile !== 'function') {
     throw new SuperJoinError(
       'unsupported-dialect',

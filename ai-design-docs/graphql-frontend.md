@@ -9,8 +9,10 @@ The GraphQL frontend maps GraphQL.js resolver information and Super-Join metadat
 The primary input is conceptually:
 
 ```ts
-graphqlToSQL({ resolveInfo, context })
+graphqlToSQL({ resolveInfo, context, model })
 ```
+
+`model` is the Super-Join metadata (`GraphQLModel`): the model, dialect, name→id resolvers, and hooks. `context` is the GraphQL server's own resolver context; graphql-js does not export a concrete type for it, so the TypeScript API keeps it generic (`unknown` by default).
 
 The adapter reads only the required parts of `GraphQLResolveInfo`:
 
@@ -23,13 +25,26 @@ It converts them into frontend-neutral requested fields, generic model metadata,
 
 ## Context
 
-GraphQL context is frontend-local. Hooks may use it to compute an expression or parameter, but arbitrary context must not be copied into `CompilerRequest`.
+GraphQL context is frontend-local. It is passed alongside the `GraphQLModel` and handed to hooks (which receive both) so they can compute an expression or parameter, but arbitrary context must not be copied into `CompilerRequest`.
 
 ```text
 GraphQL context -> metadata hook -> expression/value -> CompilerRequest
 ```
 
 For example, `context.tenantId` may become `parameter(123)` in an equality condition. Rust only receives the resulting condition.
+
+## Recognized arguments are a field-level option
+
+Which GraphQL arguments super-join recognizes for one field is configured through `GraphQLModel.fields` (keyed by GraphQL field name, applying to root and nested fields alike):
+
+- `pagination: "offset"` (default) recognizes exactly `limit`/`offset`.
+- `pagination: "cursor"` recognizes the Relay connection arguments `first`/`last`/`after`/`before`; cursors are opaque base64url payloads of the ordering values (`encodeCursor`/`decodeCursor`). The frontend compiles them into existing request features only: a strict lexicographic tuple comparison over the ordering columns plus `limit = pageSize + 1` (the probe row lets the driver detect `hasNextPage`/`hasPreviousPage` and trim). A `last`/`before` pass flips every ordering direction; the driver reverses rows back.
+- `orderBy: false` stops recognizing the `orderBy` argument.
+- `filterArgs` opts into mapping named arguments onto model-field equality predicates (`true` = same-name mapping, or an explicit argument→field map).
+
+Arguments that are not recognized are ignored for SQL purposes — they never become predicates and never error — but they remain in `HookEnvironment.args`, so extra schema arguments stay usable by the hooks themselves.
+
+Nested ordering is supported: a nested query node's order-by entries are appended after the parent's, qualified by the child table alias. Nested limit/offset remain `unsupported-feature` because the flat join strategy cannot preserve them.
 
 ## GraphQL semantics
 

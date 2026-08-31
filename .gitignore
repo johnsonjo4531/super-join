@@ -4,5 +4,14 @@
 /dist
 /node_modules
 /pkg
+
+# generated user-facing API references (see ai-design-docs/user-facing-docs.md)
+/docs/super-join/api
+/docs/super-join/rust-api
 **/.obsidian/*
 .obsidian/
+
+# cargo-component regenerates these; the adapter uses wit_bindgen::generate! directly
+crates/*/src/bindings.rs
+
+/examples/*/node_modules

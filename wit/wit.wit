@@ -80,13 +80,27 @@ interface compiler {
     // Model: declarative description of queryable data
     // =====================================================================
 
-    // Metadata for one scalar field.
+    // Metadata for one scalar field. `computed` marks a field whose value is a
+    // SELECT expression (e.g. `(SELECT COUNT(*) FROM posts WHERE ...)`) rather
+    // than a physical column; `identifier` then names the output only.
     record field-metadata {
         id: u64,
         identifier: identifier,
         data-type: scalar-type,
         nullable: bool,
         selectable: bool,
+        computed: option<computed-field>,
+    }
+
+    // A scalar SELECT expression that satisfies a field instead of a physical
+    // column. `projection` is the part after `SELECT`; `entity` is the FROM
+    // source (a model entity id); `predicate` is the optional WHERE clause.
+    // Columns in these expressions resolve against `entity`; `parent-column`
+    // correlates to the occurrence that owns the field.
+    record computed-field {
+        entity: u64,
+        projection: expression,
+        predicate: option<expression>,
     }
 
     // Cardinality of a relation endpoint.
@@ -102,11 +116,15 @@ interface compiler {
     }
 
     // Metadata for one root entity. `source` names the backing table(s).
+    // `identity` lists the field ids that uniquely identify a row (the primary
+    // key); both endpoints of any nested relation must declare an identity so
+    // result-shape metadata can record how flattened rows regroup.
     record entity-metadata {
         id: u64,
         source: identifier,
         fields: list<field-metadata>,
         relations: list<relation-metadata>,
+        identity: list<u64>,
     }
 
     // The complete set of entities that make up a request model.
@@ -127,6 +145,10 @@ interface compiler {
     enum comparison-operator { eq, ne, lt, lte, gt, gte }
     enum boolean-operator { and, or }
     enum is-null-operator { is-null, is-not-null }
+
+    // SQL aggregate function applied to one term (`*` when the node has no
+    // operand; only `count` allows that). Used in computed-field projections.
+    enum aggregate-function { count, sum, min, max, avg }
 
     // A runtime value bound as a SQL parameter.
     record parameter {
@@ -161,6 +183,8 @@ interface compiler {
         depth: option<u64>,
         // The RHS value list (kind = in-list).
         values: list<parameter>,
+        // Aggregate function (kind = aggregate; no operand means `*` for count).
+        agg-func: option<aggregate-function>,
     }
 
     enum expr-kind {
@@ -174,6 +198,7 @@ interface compiler {
         is-null,
         is-not-null,
         in-list,
+        aggregate,
     }
 
     // The flattened expression: list of nodes, last one being the root.
@@ -247,10 +272,29 @@ interface compiler {
     // How selected rows correspond to the requested entities.
     enum result-shape-kind { flat, nested, json }
 
+    // One identity (primary-key) column of an entity occurrence as it appears
+    // in a flattened row: the logical field and its output alias.
+    record identity-column {
+        field: u64,
+        alias: string,
+    }
+
+    // One nested relation occurrence: the joined table aliases and the output
+    // aliases carrying the parent/child identity fields needed to regroup
+    // flattened rows back into entities.
+    record nesting-level {
+        path: list<string>,
+        parent-alias: string,
+        child-alias: string,
+        parent-identity: list<identity-column>,
+        child-identity: list<identity-column>,
+    }
+
     // Describes how result rows map to requested entities and nested fields.
     record result-shape {
         kind: result-shape-kind,
         rows: list<selected-field>,
+        nesting: list<nesting-level>,
     }
 
     // The complete compiler output handed to an application-owned driver.

@@ -161,7 +161,7 @@ Runtime tests do not prove declarations are useful. Add type-level tests that co
 
 - `compile(request)` request/result/error types.
 - Expression builder return types.
-- `graphqlToSQL({ resolveInfo, context })` input and artifact result types.
+- `graphqlToSQL({ resolveInfo, context, model })` input and artifact result types.
 - GraphQL as a peer dependency only for the GraphQL subpath.
 - Rejection of invalid public API usage that should fail at compile time.
 

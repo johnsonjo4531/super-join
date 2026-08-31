@@ -11,17 +11,16 @@ Frontend hooks provide dynamic metadata without contaminating the compiler bound
 An initial GraphQL hook environment is conceptually:
 
 ```ts
-type SuperJoinHookContext = {
+type HookEnvironment<TContext> = {
   args: Record<string, unknown>;
-  context: unknown;
-  info: GraphQLResolveInfo;
-  field: FieldMetadata;
-  parent: ParentMetadata;
+  model: GraphQLModel<TContext>;
+  context: TContext;
   expr: ExpressionBuilder;
+  path: string[];
 };
 ```
 
-The exact TypeScript types may refine this shape. `args`, `context`, and `info` are available only while the hook is executing in TypeScript.
+The exact TypeScript types may refine this shape. `args`, `model`, `context`, and `expr` are available only while the hook is executing in TypeScript. Hooks receive both the Super-Join metadata (`model`) and the GraphQL server's own resolver context (`context`).
 
 ## Hook categories
 
@@ -35,6 +34,10 @@ where: ({ args, context, expr }) =>
 The first implementation SHOULD intentionally limit hooks to `where` and `orderBy`. Relation join definitions should initially be static model metadata. Add dynamic joins, selection hooks, or computed fields only after the expression scopes and result-shape behavior are designed and tested.
 
 `where` returns `Expression | undefined`. `orderBy` returns one `OrderBy`, a list of `OrderBy`, or `undefined`; each entry consists of a model field reference and explicit ascending/descending direction. A hook may return no contribution, but it may not erase a mandatory compiler/model predicate such as a static relation condition.
+
+## Hooks on relations and entities
+
+Hooks are first-class on relation fields exactly as on entity fields. A relation `where` contribution is folded into the relation's join condition (so nested filtering cannot change the outer join's null semantics), and a relation `orderBy` appends ordering qualified by the nested table alias after the parent's ordering, so nested rows arrive sorted within each parent group. Entity-level and relation-level hooks may also be declared on decorated classes (`@Entity({ hooks })`, `@Relation(..., { hooks })`) and are collected into the GraphQL frontend's per-field options (see typescript-decorators.md).
 
 ## Execution and errors
 

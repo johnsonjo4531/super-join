@@ -15,6 +15,7 @@ The model must describe:
 - Entities and their stable logical identifiers.
 - Physical tables or other source relations.
 - Scalar fields and their physical columns/types.
+- Computed fields: fields satisfied by a scalar SELECT expression instead of a physical column.
 - Relations, including cardinality and join mapping.
 - Primary or identity fields where required for result shaping.
 - Optional mapping between frontend field names and model identifiers.
@@ -35,6 +36,12 @@ struct Field {
     value_type: ValueType,
     nullable: bool,
     selectable: bool,
+    computed: Option<SelectSubquery>,
+}
+struct SelectSubquery {
+    entity: EntityId,          // FROM source (a model entity)
+    projection: Expression,    // the part after SELECT; may aggregate
+    predicate: Option<Expression>, // optional WHERE within that scope
 }
 struct Relation {
     id: RelationId,
@@ -45,6 +52,8 @@ struct Relation {
 ```
 
 `EntityId`, `FieldId`, and `RelationId` are logical stable identifiers; physical names are distinct fields. `TableRef` and `ColumnRef` must be identifier components, not raw SQL fragments. The initial relation representation should be restricted to equality mappings between known source/target fields. General arbitrary join expressions can be added later using the expression model with clearly defined scopes.
+
+A computed field renders as `(SELECT <projection> FROM <entity source> AS <alias> [WHERE <predicate>])`. Columns in its expressions resolve against `entity`; `ParentColumn` correlates to the occurrence that owns the field. Validation rejects a computed field whose `entity` is unknown, and forbids computed fields from being identity fields (identity columns regroup flattened rows by value).
 
 Example:
 

@@ -1,0 +1,17 @@
+{
+  "name": "super-join-example-graphql-js",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A complete Node.js GraphQL server (graphql-js + node:sqlite) whose queries compile through super-join.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "graphql": "^16.14.2",
+    "super-join": "file:../.."
+  }
+}

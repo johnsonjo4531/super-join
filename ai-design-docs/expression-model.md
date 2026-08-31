@@ -47,9 +47,22 @@ Expression =
 | Not { term }
 | NullTest { operator: is_null|is_not_null, term }
 | In { term, values[] }
+| Aggregate { function: count|sum|min|max|avg, term? }
 ```
 
 `Column` references a resolved logical field ID rather than a text identifier when it crosses the compiler boundary. The frontend builder may accept friendly names only while it has enough metadata to resolve them. `ParentColumn` must use an explicit correlation depth and can only be used in a relation/subquery scope that defines a parent.
+
+`Aggregate` renders as `COUNT(*)` (no term, count only), `SUM(x)`, `MIN(x)`, `MAX(x)`, or `AVG(x)`. Aggregates exist to build computed-field select expressions; they are meaningful inside a sub-select projection (see model.md's `SelectSubquery`).
+
+### Select expressions (computed fields)
+
+The builder exposes the parts of SQL a `SELECT` needs — and only those:
+
+```ts
+expr.select(fromEntityId, projection /* after SELECT */, { where })
+```
+
+The result is a `ComputedField` definition (`{ entity, projection, predicate }`) used in model metadata. Inside it, `column` resolves against `fromEntityId` and `parentColumn(1, ...)` correlates to the field's owning occurrence. This deliberately does not expose the full SQL dialect: no joins, group-by, unions, or raw text — only one projection expression, one model entity as FROM, and an optional predicate.
 
 ### Normalization rules
 

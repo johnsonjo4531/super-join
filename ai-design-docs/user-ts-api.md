@@ -12,6 +12,7 @@ import { graphqlToSQL } from "super-join/graphql";
 const artifact = await graphqlToSQL({
   resolveInfo,
   context,
+  model,
 });
 ```
 
@@ -70,7 +71,7 @@ The TypeScript package may throw these errors for ergonomic JavaScript use, but 
 
 ## First API acceptance criteria
 
-- `graphqlToSQL` accepts a normal GraphQL resolver's `resolveInfo` and context.
+- `graphqlToSQL` accepts a normal GraphQL resolver's `resolveInfo`, the GraphQL server's context, and the Super-Join `GraphQLModel`.
 - It evaluates metadata hooks locally and sends no function/context object through WIT.
 - It returns SQL plus ordered parameters and result metadata.
 - A consumer can execute the artifact with its own driver without importing an execution module from Super-Join.

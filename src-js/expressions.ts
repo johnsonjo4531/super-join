@@ -1,5 +1,7 @@
 import type {
+  AggregateFunction,
   ComparisonOperator,
+  ComputedField,
   ExprNode,
   Expression,
   Parameter,
@@ -26,7 +28,11 @@ export type ExpressionSpec =
   | { kind: 'compare'; op: ComparisonOperator; left: ExpressionSpec; right: ExpressionSpec }
   | { kind: 'is-null'; child: ExpressionSpec }
   | { kind: 'is-not-null'; child: ExpressionSpec }
-  | { kind: 'in-list'; child: ExpressionSpec; values: Array<{ value: RawValue; dataType: ScalarType }> };
+  | { kind: 'in-list'; child: ExpressionSpec; values: Array<{ value: RawValue; dataType: ScalarType }> }
+  | { kind: 'aggregate'; func: AggregateFunction; term?: ExpressionSpec };
+
+/** A computed-field definition: the part after SELECT plus FROM/WHERE. */
+export type ComputedFieldSpec = ComputedField;
 
 const emptyBigUint64 = (): BigUint64Array => new BigUint64Array(0);
 const emptyParameterArray = (): Array<Parameter> => [];
@@ -171,6 +177,19 @@ function flatten(spec: ExpressionSpec, nodes: ExprNode[], resolver?: ColumnResol
       });
       return nodes.length - 1;
     }
+    case 'aggregate': {
+      const operands: bigint[] = [];
+      if (spec.term) {
+        operands.push(BigInt(flatten(spec.term, nodes, resolver)));
+      }
+      nodes.push({
+        kind: 'aggregate',
+        aggFunc: spec.func,
+        operands: bigUint64(operands),
+        values: emptyParameterArray(),
+      });
+      return nodes.length - 1;
+    }
     default: {
       const exhaustivenessCheck: never = spec;
       throw new TypeError(`unhandled expression spec: ${JSON.stringify(exhaustivenessCheck)}`);
@@ -276,6 +295,51 @@ export class ExpressionBuilder {
    */
   inList(child: ExpressionSpec, values: Array<{ value: RawValue; dataType: ScalarType }>): ExpressionSpec {
     return { kind: 'in-list', child, values };
+  }
+
+  /** SQL aggregate call; `COUNT(*)` when no term is given. */
+  count(term?: ExpressionSpec): ExpressionSpec {
+    return { kind: 'aggregate', func: 'count', term };
+  }
+
+  /** `SUM(term)`. */
+  sum(term: ExpressionSpec): ExpressionSpec {
+    return { kind: 'aggregate', func: 'sum', term };
+  }
+
+  /** `MIN(term)`. */
+  min(term: ExpressionSpec): ExpressionSpec {
+    return { kind: 'aggregate', func: 'min', term };
+  }
+
+  /** `MAX(term)`. */
+  max(term: ExpressionSpec): ExpressionSpec {
+    return { kind: 'aggregate', func: 'max', term };
+  }
+
+  /** `AVG(term)`. */
+  avg(term: ExpressionSpec): ExpressionSpec {
+    return { kind: 'aggregate', func: 'avg', term };
+  }
+
+  /**
+   * Builds a computed-field definition: a scalar SELECT expression that
+   * satisfies a model field instead of a physical column. `from` is the model
+   * entity id used as the subquery's FROM source; `projection` is the part
+   * after `SELECT` (aggregates allowed); `where` is the optional predicate.
+   * Columns in these expressions resolve against `from`; use `parentColumn` to
+   * correlate with the occurrence that owns the field.
+   */
+  select(
+    from: bigint,
+    projection: ExpressionSpec,
+    options?: { where?: ExpressionSpec },
+  ): ComputedFieldSpec {
+    return {
+      entity: from,
+      projection: this.build(projection),
+      predicate: options?.where ? this.build(options.where) : undefined,
+    };
   }
 
   /** Flatten the tree into the WIT expression: a topologically ordered node list. */

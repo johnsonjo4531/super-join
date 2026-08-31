@@ -36,8 +36,10 @@ GraphQL.js / another frontend
 4. [model.md](model.md) — the database/model representation understood by the compiler.
 5. [semantic-ir.md](semantic-ir.md), [relational-ir.md](relational-ir.md), [sql-ir.md](sql-ir.md), and [rust-codegen.md](rust-codegen.md) — internal compilation pipeline.
 6. [generated-artifact.md](generated-artifact.md) and [execution.md](execution.md) — compiler output and the application-owned execution boundary.
-7. [user-ts-api.md](user-ts-api.md), [typescript-build.md](typescript-build.md), and [typescript-testing.md](typescript-testing.md) — the TypeScript consumer API, npm/Vite/Wasm distribution, and Vitest test strategy.
+7. [user-ts-api.md](user-ts-api.md), [typescript-decorators.md](typescript-decorators.md), [typescript-build.md](typescript-build.md), and [typescript-testing.md](typescript-testing.md) — the TypeScript consumer API, decorator metadata API, npm/Vite/Wasm distribution, and Vitest test strategy.
 8. [testing.md](testing.md) — cross-layer and Rust-first compiler verification.
+9. [user-facing-docs.md](user-facing-docs.md) — how the user-facing documentation in `docs/super-join/` is generated and updated.
+10. [code-examples.md](code-examples.md) — runnable example applications under `examples/` and how they are maintained.
 
 ## Normative vocabulary
 

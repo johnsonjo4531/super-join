@@ -13,7 +13,8 @@ import {
   SuperJoinError,
   setComponentLoaderForTesting,
 } from '../src-js/component.js';
-import type { CompiledComponent, CompilerRequest } from '../src-js/wit.js';
+import type { CompiledComponent } from '../src-js/component.js';
+import type { CompilerRequest } from '../src-js/wit.js';
 
 const REQUEST: CompilerRequest = {
   model: { entities: [] },
@@ -121,12 +122,14 @@ describe('real component integration', () => {
                 },
               },
             ],
+            identity: new BigUint64Array([0n]),
           },
           {
             id: 1n,
             source: { components: ['public', 'posts'] },
             fields: [field(10n, 'id'), field(11n, 'author_id'), field(12n, 'title')],
             relations: [],
+            identity: new BigUint64Array([10n]),
           },
         ],
       },
@@ -182,6 +185,17 @@ describe('real component integration', () => {
     expect(result.artifact.sql).toContain('"users"."id" = $1');
     expect(result.artifact.parameters.length).toBe(1);
     expect(result.artifact.resultShape.kind).toBe('nested');
+
+    // The result-shape records how flattened rows regroup into entities: the
+    // parent identity alias is reused, the unselected child identity is added.
+    expect(result.artifact.resultShape.nesting.length).toBe(1);
+    const level = result.artifact.resultShape.nesting[0];
+    expect(level.path).toEqual(['users', 'posts']);
+    expect(level.parentAlias).toBe('users');
+    expect(level.childAlias).toBe('posts');
+    expect(level.parentIdentity).toEqual([{ field: 0n, alias: 'id' }]);
+    expect(level.childIdentity).toEqual([{ field: 10n, alias: '__sj_identity_posts_id' }]);
+    expect(result.artifact.sql).toContain('"posts"."id" AS "__sj_identity_posts_id"');
   });
 
   test('rejects a malformed expression with a structured error, not a trap', async () => {

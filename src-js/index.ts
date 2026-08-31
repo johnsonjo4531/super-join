@@ -1,7 +1,7 @@
 // Public API for super-join's TypeScript boundary.
 export * from './wit.js';
 export { ExpressionBuilder, expr } from './expressions.js';
-export type { ColumnResolver, RawValue } from './expressions.js';
+export type { ColumnResolver, ComputedFieldSpec, ExpressionSpec, RawValue } from './expressions.js';
 export {
   compile,
   defaultComponentLoader,
@@ -14,12 +14,16 @@ export { graphqlToSQL } from './graphql.js';
 export type {
   EntityResolver,
   FieldHooks,
+  FieldOptions as GraphQLFieldArgumentOptions,
   FieldResolver,
-  GraphQLContext,
+  GraphQLModel,
   GraphQLToSqlArgs,
   HookEnvironment,
   OrderByEntry,
   OrderByHook,
+  PaginationMode,
   RelationResolver,
   WhereHook,
 } from './graphql.js';
+export { Entity, Field, Relation, entityIdOf, entityMetadataOf, modelFromClasses } from './decorators.js';
+export type { EntityOptions, EntityClassMetadata, FieldOptions, RelationOptions } from './decorators.js';

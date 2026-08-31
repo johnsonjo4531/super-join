@@ -133,3 +133,45 @@ describe('ExpressionBuilder booleans and null', () => {
     ]);
   });
 });
+
+describe('ExpressionBuilder aggregates and select expressions', () => {
+  test('count() with no term is COUNT(*) (no operands)', () => {
+    const { nodes } = expr.build(expr.count());
+    expect(nodes.length).toBe(1);
+    expect(nodes[0]?.kind).toBe('aggregate');
+    expect(nodes[0]?.aggFunc).toBe('count');
+    expect(nodes[0]?.operands.length).toBe(0);
+  });
+
+  test('aggregates over a term reference the operand index', () => {
+    const builder = new ExpressionBuilder(RESOLVER);
+    const { nodes } = builder.build(builder.max(builder.column('id')));
+    expect(nodes.map((n) => n?.kind)).toEqual(['column', 'aggregate']);
+    expect(nodes[1]?.aggFunc).toBe('max');
+    expect(nodes[1]?.operands).toEqual(BigUint64Array.from([0n]));
+  });
+
+  test('select() builds a computed-field definition from the parts after SELECT', () => {
+    const builder = new ExpressionBuilder();
+    const computed = builder.select(
+      1n,
+      expr.count(),
+      { where: expr.eq(expr.column(11n), expr.parentColumn(1, 0n)) },
+    );
+    expect(computed.entity).toBe(1n);
+    // projection: the COUNT(*) node alone.
+    expect(computed.projection.nodes.length).toBe(1);
+    expect(computed.projection.nodes[0]?.kind).toBe('aggregate');
+    // predicate: column + parent-column + compare.
+    expect(computed.predicate?.nodes.map((n) => n.kind)).toEqual([
+      'column',
+      'parent-column',
+      'compare',
+    ]);
+  });
+
+  test('select() without a where clause omits the predicate', () => {
+    const computed = expr.select(1n, expr.count());
+    expect(computed.predicate).toBeUndefined();
+  });
+});

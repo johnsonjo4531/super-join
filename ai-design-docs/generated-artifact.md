@@ -44,7 +44,7 @@ The compiler must document whether SQL rows are expected to be flat joined rows,
 ## Consumer example
 
 ```ts
-const artifact = await graphqlToSQL({ resolveInfo, context });
+const artifact = await graphqlToSQL({ resolveInfo, context, model });
 const rows = await db.query(artifact.sql, artifact.parameters);
 ```
 

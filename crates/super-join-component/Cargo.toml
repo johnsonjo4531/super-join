@@ -1,0 +1,22 @@
+[package]
+name = "super-join-component"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "The WIT component boundary for super-join: a thin adapter over the super-join-core compiler."
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+# Keep the wasm artifact name stable (super_join.wasm) for the npm packaging step.
+name = "super_join"
+
+[dependencies]
+super-join-core = { path = "../super-join-core", version = "0.0.0" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wit-bindgen = { version = "0.61.1", default-features = false, features = ["macros"] }
+
+[package.metadata.component.target]
+path = "../../wit"

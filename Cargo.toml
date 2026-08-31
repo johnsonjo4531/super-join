@@ -1,16 +1,11 @@
-[package]
-name = "super-join"
+[workspace]
+members = ["crates/super-join-core", "crates/super-join-component"]
+resolver = "3"
+
+[workspace.package]
 version = "0.0.0"
 edition = "2024"
 authors = ["John Johnson <johnsonjo4531@gmail.com>"]
 description = "super-join is a wasm library for turning your graphql queries into SQL queries which solves the n+1 problem"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/johnsonjo4531/super-join"
-
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies]
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wit-bindgen = { version = "0.61.1", default-features = false, features = ["macros"] }

@@ -13,19 +13,29 @@
     "./graphql": {
       "types": "./dist/graphql.d.ts",
       "default": "./dist/graphql.js"
-    }
+    },
+    "./graphql/decorators": {
+      "types": "./dist/graphql-decorators.d.ts",
+      "default": "./dist/graphql-decorators.js"
+    },
+    "./wasm/super_join.wasm": "./dist/wasm/super_join.wasm"
   },
   "files": [
-    "dist",
-    "pkg"
+    "dist"
   ],
   "scripts": {
     "pretest": "npm run build",
-    "build": "tsc",
-    "build:wasm": "cargo component build --target wasm32-wasip1 && npx jco transpile target/wasm32-wasip1/debug/super_join.wasm -o pkg --name super_join",
+    "build": "vite build && tsc --declaration --emitDeclarationOnly",
+    "build:wasm": "cargo component build -p super-join-component --target wasm32-wasip1 && npx jco transpile target/wasm32-wasip1/debug/super_join.wasm -o pkg --name super_join && npx jco types wit/wit.wit -o src-js/types/generated/wit",
+    "stage": "node scripts/stage-package.mjs",
+    "build:package": "npm run build:wasm && npm run build && npm run stage",
     "test": "vitest",
     "test:run": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "smoke:packaged": "node scripts/pack-smoke.mjs",
+    "typecheck": "tsc --noEmit",
+    "docs:ts": "typedoc",
+    "docs:rust": "cargo doc --no-deps -p super-join-core -p super-join-component && rm -rf docs/super-join/rust-api && cp -r target/doc docs/super-join/rust-api",
+    "docs": "npm run docs:ts && npm run docs:rust"
   },
   "keywords": [
     "sql",
@@ -43,8 +53,12 @@
   },
   "devDependencies": {
     "@bytecodealliance/jco": "^1.32.1",
+    "@clean-jsdoc-theme/typedoc": "^5.2.0",
     "@types/node": "^22.7.5",
+    "graphql": "^17.0.2",
+    "typedoc": "^0.28.20",
     "typescript": "^5.6.3",
+    "vite": "^5.4.0",
     "vitest": "^2.1.8"
   },
   "peerDependencies": {
