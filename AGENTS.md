@@ -11,4 +11,4 @@ After you are done changing code please also change the user-facing-docs as show
 
 For prose (comments/documentation/etc.) please also only write English into this repository.
 
-When asked to do a task in TASKS.md add it to the CHANGELOG.md file where the current version of super-join is a 2nd level header (section) and the indiviual task is written properly for a changelog into that section. If the section already exists then just prepend your tasks to the changelog section for that version.
+When asked to do a task in TASKS.md and once you finish it add it to the CHANGELOG.md file where the current version of super-join is a 2nd level header (section) and the indiviual task is written properly for a changelog into that section. If the section already exists then just prepend your tasks to the changelog section for that version.
